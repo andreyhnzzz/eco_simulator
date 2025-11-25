@@ -260,6 +260,9 @@ public class ReportePDFGenerator {
 
     /**
      * Sanitize text to remove characters that PDFBox cannot encode with basic fonts.
+     * Note: PDType1Font (standard 14 fonts) do not support accented characters.
+     * This method replaces Spanish accented characters with their non-accented equivalents
+     * to ensure PDF generation works without requiring custom font embedding.
      */
     private String sanitizeText(String text) {
         if (text == null) return "";
