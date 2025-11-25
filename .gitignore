@@ -1,0 +1,32 @@
+# Build artifacts
+target/
+build/
+*.class
+*.jar
+*.war
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Maven wrapper
+.mvn/wrapper/maven-wrapper.jar
+
+# Test output
+*.log
+estado_turnos.txt
+ecosistema.txt
+usuairos.txt
+*.pdf
+
+# Temporary files
+*.tmp
+*.temp
