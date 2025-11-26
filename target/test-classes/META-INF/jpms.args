@@ -1,4 +1,0 @@
---patch-module
-com.ecosimulator=_
---add-reads
-com.ecosimulator=ALL-UNNAMED
