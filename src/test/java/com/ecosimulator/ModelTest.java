@@ -16,7 +16,7 @@ class ModelTest {
         assertEquals(CellType.PREDATOR, predator.getType());
         assertEquals(5, predator.getRow());
         assertEquals(5, predator.getCol());
-        assertEquals(20, predator.getEnergy()); // Predators start with 20 energy
+        assertEquals(15, predator.getEnergy()); // Predators start with 15 energy (balanced)
         assertFalse(predator.isMutated());
     }
 
@@ -82,7 +82,7 @@ class ModelTest {
         assertFalse(config.isThirdSpeciesEnabled());
         assertFalse(config.isMutationsEnabled());
         assertEquals(20, config.getGridSize());
-        assertEquals(500, config.getTurnDelayMs());
+        assertEquals(1000, config.getTurnDelayMs()); // Slower pace: 1 second default
         assertEquals(200, config.getMaxTurns());
     }
 
