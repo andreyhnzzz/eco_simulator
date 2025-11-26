@@ -2,6 +2,7 @@ package com.ecosimulator.simulation;
 
 import com.ecosimulator.model.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -11,6 +12,7 @@ public class SimulationEngine {
     private final SimulationConfig config;
     private final CellType[][] grid;
     private final List<Creature> creatures;
+    private final Map<String, Creature> creaturePositionMap; // For O(1) lookup
     private final SimulationStats stats;
     private final Random random;
     private boolean running;
@@ -25,6 +27,7 @@ public class SimulationEngine {
         this.config = config;
         this.grid = new CellType[config.getGridSize()][config.getGridSize()];
         this.creatures = new CopyOnWriteArrayList<>();
+        this.creaturePositionMap = new ConcurrentHashMap<>();
         this.stats = new SimulationStats();
         this.random = new Random();
         this.running = false;
@@ -33,10 +36,18 @@ public class SimulationEngine {
     }
 
     /**
+     * Get position key for the creature map
+     */
+    private String positionKey(int row, int col) {
+        return row + "," + col;
+    }
+
+    /**
      * Initialize the grid based on the scenario configuration
      */
     public void initializeGrid() {
         creatures.clear();
+        creaturePositionMap.clear();
         stats.reset();
         int size = config.getGridSize();
         int totalCells = size * size;
@@ -73,6 +84,7 @@ public class SimulationEngine {
                 creature.mutate();
             }
             creatures.add(creature);
+            creaturePositionMap.put(positionKey(pos[0], pos[1]), creature);
         }
 
         // Place prey
@@ -84,6 +96,7 @@ public class SimulationEngine {
                 creature.mutate();
             }
             creatures.add(creature);
+            creaturePositionMap.put(positionKey(pos[0], pos[1]), creature);
         }
 
         // Place third species if enabled
@@ -96,6 +109,7 @@ public class SimulationEngine {
                     creature.mutate();
                 }
                 creatures.add(creature);
+                creaturePositionMap.put(positionKey(pos[0], pos[1]), creature);
             }
         }
 
@@ -147,11 +161,15 @@ public class SimulationEngine {
         // Remove dead creatures
         for (Creature dead : deadCreatures) {
             creatures.remove(dead);
+            creaturePositionMap.remove(positionKey(dead.getRow(), dead.getCol()));
             grid[dead.getRow()][dead.getCol()] = CellType.EMPTY;
         }
 
         // Add new creatures
         creatures.addAll(newCreatures);
+        for (Creature newCreature : newCreatures) {
+            creaturePositionMap.put(positionKey(newCreature.getRow(), newCreature.getCol()), newCreature);
+        }
 
         // Apply random mutations if enabled
         if (config.isMutationsEnabled()) {
@@ -191,12 +209,15 @@ public class SimulationEngine {
                 if (prey != null && !deadCreatures.contains(prey)) {
                     deadCreatures.add(prey);
                     stats.recordDeath();
+                    creaturePositionMap.remove(positionKey(prey.getRow(), prey.getCol()));
                     grid[prey.getRow()][prey.getCol()] = CellType.EMPTY;
                     
                     // Move to prey's position and gain energy
+                    creaturePositionMap.remove(positionKey(row, col));
                     grid[row][col] = CellType.EMPTY;
                     creature.move(neighbor[0], neighbor[1]);
                     grid[neighbor[0]][neighbor[1]] = creature.getType();
+                    creaturePositionMap.put(positionKey(neighbor[0], neighbor[1]), creature);
                     creature.eat((int)(8 * creature.getMutationBonus()));
                     return;
                 }
@@ -216,9 +237,11 @@ public class SimulationEngine {
         // Move to empty cell
         for (int[] neighbor : neighbors) {
             if (grid[neighbor[0]][neighbor[1]] == CellType.EMPTY) {
+                creaturePositionMap.remove(positionKey(row, col));
                 grid[row][col] = CellType.EMPTY;
                 creature.move(neighbor[0], neighbor[1]);
                 grid[neighbor[0]][neighbor[1]] = creature.getType();
+                creaturePositionMap.put(positionKey(neighbor[0], neighbor[1]), creature);
                 return;
             }
         }
@@ -292,15 +315,18 @@ public class SimulationEngine {
     }
 
     /**
-     * Find creature at specific position
+     * Find creature at specific position using O(1) lookup
      */
     private Creature findCreatureAt(int row, int col) {
-        for (Creature creature : creatures) {
-            if (creature.getRow() == row && creature.getCol() == col) {
-                return creature;
-            }
-        }
-        return null;
+        return creaturePositionMap.get(positionKey(row, col));
+    }
+
+    /**
+     * Check if creature at position is mutated (for UI rendering)
+     */
+    public boolean isCreatureMutatedAt(int row, int col) {
+        Creature creature = creaturePositionMap.get(positionKey(row, col));
+        return creature != null && creature.isMutated();
     }
 
     /**

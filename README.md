@@ -95,10 +95,6 @@ emailService.configureSmtp("smtp.gmail.com", 587, "user@gmail.com", "password");
 ## Technologies Used
 
 - **JavaFX 21** - UI Framework
-- **JFoenix** - Material Design components
-- **ControlsFX** - Additional UI controls
-- **Jakarta Mail** - Email functionality
-- **Google OAuth2** - Authentication for Gmail
 - **JUnit 5** - Testing
 
 ## License

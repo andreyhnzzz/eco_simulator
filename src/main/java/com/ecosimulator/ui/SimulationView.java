@@ -366,14 +366,8 @@ public class SimulationView extends BorderPane {
                     CellType cellType = grid[i][j];
                     Color color = Color.web(cellType.getColor());
                     
-                    // Check if creature at this position is mutated
-                    boolean isMutated = false;
-                    for (Creature creature : engine.getCreatures()) {
-                        if (creature.getRow() == i && creature.getCol() == j && creature.isMutated()) {
-                            isMutated = true;
-                            break;
-                        }
-                    }
+                    // Check if creature at this position is mutated using O(1) lookup
+                    boolean isMutated = engine.isCreatureMutatedAt(i, j);
                     
                     gridCells[i][j].setFill(color);
                     

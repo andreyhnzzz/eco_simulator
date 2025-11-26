@@ -53,10 +53,10 @@ public class SimulationStats {
             return "Extinction - No survivors";
         }
         if (predatorCount == 0) {
-            return "Preys win - Predators extinct";
+            return "Prey win - Predators extinct";
         }
         if (preyCount == 0) {
-            return "Predators win - Preys extinct";
+            return "Predators win - Prey extinct";
         }
         return "Ongoing";
     }
