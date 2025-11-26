@@ -218,15 +218,16 @@ public class SimulationEngine {
                     creature.move(neighbor[0], neighbor[1]);
                     grid[neighbor[0]][neighbor[1]] = creature.getType();
                     creaturePositionMap.put(positionKey(neighbor[0], neighbor[1]), creature);
-                    creature.eat((int)(8 * creature.getMutationBonus()));
+                    // Reduced energy gain from 8 to 5 to nerf predators
+                    creature.eat((int)(5 * creature.getMutationBonus()));
                     return;
                 }
             }
         }
 
-        // If prey, eat vegetation (gain small energy)
+        // If prey, eat vegetation (gain energy - increased from 2 to 3)
         if (creature.getType() == CellType.PREY) {
-            creature.eat(2);
+            creature.eat(3);
         }
 
         // Third species can eat both (opportunistic)

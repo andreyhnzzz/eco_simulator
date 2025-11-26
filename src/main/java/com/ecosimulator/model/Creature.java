@@ -24,9 +24,9 @@ public class Creature {
 
     private int getInitialEnergy(CellType type) {
         return switch (type) {
-            case PREDATOR -> 20;
+            case PREDATOR -> 15;  // Reduced from 20
             case PREY -> 10;
-            case THIRD_SPECIES -> 15;
+            case THIRD_SPECIES -> 12;
             default -> 0;
         };
     }
@@ -52,9 +52,9 @@ public class Creature {
 
     public boolean canReproduce() {
         int threshold = switch (type) {
-            case PREDATOR -> 30;
-            case PREY -> 15;
-            case THIRD_SPECIES -> 20;
+            case PREDATOR -> 25;  // Reduced from 30 to balance with lower energy gain
+            case PREY -> 12;      // Reduced from 15 for faster prey reproduction
+            case THIRD_SPECIES -> 18;
             default -> Integer.MAX_VALUE;
         };
         return energy >= threshold;

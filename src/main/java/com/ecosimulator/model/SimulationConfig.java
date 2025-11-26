@@ -17,7 +17,7 @@ public class SimulationConfig {
         this.thirdSpeciesEnabled = false;
         this.mutationsEnabled = false;
         this.gridSize = 20;
-        this.turnDelayMs = 500; // 0.5 seconds between turns
+        this.turnDelayMs = 1000; // 1 second between turns (slower pace)
         this.maxTurns = 200;
     }
 

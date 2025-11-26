@@ -119,7 +119,7 @@ public class SimulationView extends BorderPane {
         Label speedLabel = new Label("Velocidad:");
         speedLabel.getStyleClass().add("control-label");
         
-        speedSlider = new Slider(100, 2000, 500);
+        speedSlider = new Slider(500, 3000, 1000);
         speedSlider.setShowTickLabels(true);
         speedSlider.setShowTickMarks(true);
         speedSlider.setMajorTickUnit(500);
@@ -131,7 +131,7 @@ public class SimulationView extends BorderPane {
             }
         });
         
-        Label speedValueLabel = new Label("500ms");
+        Label speedValueLabel = new Label("1000ms");
         speedValueLabel.getStyleClass().add("speed-value");
         speedSlider.valueProperty().addListener((obs, oldVal, newVal) -> 
             speedValueLabel.setText(newVal.intValue() + "ms"));
