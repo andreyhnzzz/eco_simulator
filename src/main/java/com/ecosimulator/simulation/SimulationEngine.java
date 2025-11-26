@@ -1,0 +1,366 @@
+package com.ecosimulator.simulation;
+
+import com.ecosimulator.model.*;
+import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+/**
+ * Core simulation engine that manages the ecosystem grid and turn-based simulation
+ */
+public class SimulationEngine {
+    private final SimulationConfig config;
+    private final CellType[][] grid;
+    private final List<Creature> creatures;
+    private final SimulationStats stats;
+    private final Random random;
+    private boolean running;
+    private boolean paused;
+
+    // Callbacks for UI updates
+    private Runnable onGridUpdate;
+    private Runnable onStatsUpdate;
+    private Runnable onSimulationEnd;
+
+    public SimulationEngine(SimulationConfig config) {
+        this.config = config;
+        this.grid = new CellType[config.getGridSize()][config.getGridSize()];
+        this.creatures = new CopyOnWriteArrayList<>();
+        this.stats = new SimulationStats();
+        this.random = new Random();
+        this.running = false;
+        this.paused = false;
+        initializeGrid();
+    }
+
+    /**
+     * Initialize the grid based on the scenario configuration
+     */
+    public void initializeGrid() {
+        creatures.clear();
+        stats.reset();
+        int size = config.getGridSize();
+        int totalCells = size * size;
+
+        // Clear grid
+        for (int i = 0; i < size; i++) {
+            for (int j = 0; j < size; j++) {
+                grid[i][j] = CellType.EMPTY;
+            }
+        }
+
+        // Calculate creature counts
+        int predatorCount = (int) (totalCells * config.getPredatorPercentage());
+        int preyCount = (int) (totalCells * config.getPreyPercentage());
+        int thirdSpeciesCount = (int) (totalCells * config.getThirdSpeciesPercentage());
+
+        // Create list of all positions and shuffle
+        List<int[]> positions = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            for (int j = 0; j < size; j++) {
+                positions.add(new int[]{i, j});
+            }
+        }
+        Collections.shuffle(positions, random);
+
+        int posIndex = 0;
+
+        // Place predators
+        for (int i = 0; i < predatorCount && posIndex < positions.size(); i++) {
+            int[] pos = positions.get(posIndex++);
+            grid[pos[0]][pos[1]] = CellType.PREDATOR;
+            Creature creature = new Creature(CellType.PREDATOR, pos[0], pos[1]);
+            if (config.isMutationsEnabled() && random.nextDouble() < 0.1) {
+                creature.mutate();
+            }
+            creatures.add(creature);
+        }
+
+        // Place prey
+        for (int i = 0; i < preyCount && posIndex < positions.size(); i++) {
+            int[] pos = positions.get(posIndex++);
+            grid[pos[0]][pos[1]] = CellType.PREY;
+            Creature creature = new Creature(CellType.PREY, pos[0], pos[1]);
+            if (config.isMutationsEnabled() && random.nextDouble() < 0.1) {
+                creature.mutate();
+            }
+            creatures.add(creature);
+        }
+
+        // Place third species if enabled
+        if (config.isThirdSpeciesEnabled()) {
+            for (int i = 0; i < thirdSpeciesCount && posIndex < positions.size(); i++) {
+                int[] pos = positions.get(posIndex++);
+                grid[pos[0]][pos[1]] = CellType.THIRD_SPECIES;
+                Creature creature = new Creature(CellType.THIRD_SPECIES, pos[0], pos[1]);
+                if (config.isMutationsEnabled() && random.nextDouble() < 0.1) {
+                    creature.mutate();
+                }
+                creatures.add(creature);
+            }
+        }
+
+        updateStats();
+        if (onGridUpdate != null) onGridUpdate.run();
+        if (onStatsUpdate != null) onStatsUpdate.run();
+    }
+
+    /**
+     * Execute one turn of the simulation
+     */
+    public void executeTurn() {
+        if (!running || paused) return;
+
+        stats.nextTurn();
+        List<Creature> newCreatures = new ArrayList<>();
+        List<Creature> deadCreatures = new ArrayList<>();
+
+        // Shuffle creatures for random order processing
+        List<Creature> shuffled = new ArrayList<>(creatures);
+        Collections.shuffle(shuffled, random);
+
+        for (Creature creature : shuffled) {
+            if (creature.isDead() || deadCreatures.contains(creature)) continue;
+
+            // Age the creature
+            creature.age();
+
+            // Check if creature died of old age/starvation
+            if (creature.isDead()) {
+                deadCreatures.add(creature);
+                stats.recordDeath();
+                continue;
+            }
+
+            // Try to find food or move
+            processCreatureAction(creature, newCreatures, deadCreatures);
+
+            // Try to reproduce
+            if (creature.canReproduce() && !creature.isDead()) {
+                Creature offspring = tryReproduce(creature);
+                if (offspring != null) {
+                    newCreatures.add(offspring);
+                    stats.recordBirth();
+                }
+            }
+        }
+
+        // Remove dead creatures
+        for (Creature dead : deadCreatures) {
+            creatures.remove(dead);
+            grid[dead.getRow()][dead.getCol()] = CellType.EMPTY;
+        }
+
+        // Add new creatures
+        creatures.addAll(newCreatures);
+
+        // Apply random mutations if enabled
+        if (config.isMutationsEnabled()) {
+            applyRandomMutations();
+        }
+
+        updateStats();
+
+        if (onGridUpdate != null) onGridUpdate.run();
+        if (onStatsUpdate != null) onStatsUpdate.run();
+
+        // Check for simulation end conditions
+        if (stats.isExtinct() || stats.getTurn() >= config.getMaxTurns()) {
+            stop();
+            if (onSimulationEnd != null) onSimulationEnd.run();
+        }
+    }
+
+    /**
+     * Process creature movement and hunting/eating
+     */
+    private void processCreatureAction(Creature creature, List<Creature> newCreatures, 
+                                        List<Creature> deadCreatures) {
+        int row = creature.getRow();
+        int col = creature.getCol();
+        List<int[]> neighbors = getNeighbors(row, col);
+        Collections.shuffle(neighbors, random);
+
+        CellType targetType = getTargetType(creature.getType());
+
+        // Look for food first
+        for (int[] neighbor : neighbors) {
+            CellType cellType = grid[neighbor[0]][neighbor[1]];
+            if (cellType == targetType) {
+                // Hunt/eat
+                Creature prey = findCreatureAt(neighbor[0], neighbor[1]);
+                if (prey != null && !deadCreatures.contains(prey)) {
+                    deadCreatures.add(prey);
+                    stats.recordDeath();
+                    grid[prey.getRow()][prey.getCol()] = CellType.EMPTY;
+                    
+                    // Move to prey's position and gain energy
+                    grid[row][col] = CellType.EMPTY;
+                    creature.move(neighbor[0], neighbor[1]);
+                    grid[neighbor[0]][neighbor[1]] = creature.getType();
+                    creature.eat((int)(8 * creature.getMutationBonus()));
+                    return;
+                }
+            }
+        }
+
+        // If prey, eat vegetation (gain small energy)
+        if (creature.getType() == CellType.PREY) {
+            creature.eat(2);
+        }
+
+        // Third species can eat both (opportunistic)
+        if (creature.getType() == CellType.THIRD_SPECIES) {
+            creature.eat(1);
+        }
+
+        // Move to empty cell
+        for (int[] neighbor : neighbors) {
+            if (grid[neighbor[0]][neighbor[1]] == CellType.EMPTY) {
+                grid[row][col] = CellType.EMPTY;
+                creature.move(neighbor[0], neighbor[1]);
+                grid[neighbor[0]][neighbor[1]] = creature.getType();
+                return;
+            }
+        }
+    }
+
+    /**
+     * Get the target food type for a creature
+     */
+    private CellType getTargetType(CellType creatureType) {
+        return switch (creatureType) {
+            case PREDATOR -> CellType.PREY;
+            case PREY -> null; // Prey eats vegetation (always available)
+            case THIRD_SPECIES -> random.nextBoolean() ? CellType.PREY : CellType.PREDATOR;
+            default -> null;
+        };
+    }
+
+    /**
+     * Try to reproduce a creature
+     */
+    private Creature tryReproduce(Creature parent) {
+        int row = parent.getRow();
+        int col = parent.getCol();
+        List<int[]> neighbors = getNeighbors(row, col);
+        Collections.shuffle(neighbors, random);
+
+        for (int[] neighbor : neighbors) {
+            if (grid[neighbor[0]][neighbor[1]] == CellType.EMPTY) {
+                parent.reproduce();
+                Creature offspring = new Creature(parent.getType(), neighbor[0], neighbor[1]);
+                
+                // Inherit mutation with some probability
+                if (parent.isMutated() && random.nextDouble() < 0.7) {
+                    offspring.mutate();
+                }
+                
+                grid[neighbor[0]][neighbor[1]] = offspring.getType();
+                return offspring;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Apply random mutations to creatures
+     */
+    private void applyRandomMutations() {
+        for (Creature creature : creatures) {
+            if (!creature.isMutated() && random.nextDouble() < 0.02) { // 2% chance per turn
+                creature.mutate();
+            }
+        }
+    }
+
+    /**
+     * Get valid neighboring cells
+     */
+    private List<int[]> getNeighbors(int row, int col) {
+        List<int[]> neighbors = new ArrayList<>();
+        int size = config.getGridSize();
+        int[][] directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}, {-1, -1}, {-1, 1}, {1, -1}, {1, 1}};
+        
+        for (int[] dir : directions) {
+            int newRow = row + dir[0];
+            int newCol = col + dir[1];
+            if (newRow >= 0 && newRow < size && newCol >= 0 && newCol < size) {
+                neighbors.add(new int[]{newRow, newCol});
+            }
+        }
+        return neighbors;
+    }
+
+    /**
+     * Find creature at specific position
+     */
+    private Creature findCreatureAt(int row, int col) {
+        for (Creature creature : creatures) {
+            if (creature.getRow() == row && creature.getCol() == col) {
+                return creature;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Update statistics based on current state
+     */
+    private void updateStats() {
+        int predators = 0, prey = 0, third = 0, mutated = 0;
+        
+        for (Creature creature : creatures) {
+            switch (creature.getType()) {
+                case PREDATOR -> predators++;
+                case PREY -> prey++;
+                case THIRD_SPECIES -> third++;
+                default -> {}
+            }
+            if (creature.isMutated()) mutated++;
+        }
+        
+        stats.setPredatorCount(predators);
+        stats.setPreyCount(prey);
+        stats.setThirdSpeciesCount(third);
+        stats.setMutatedCount(mutated);
+    }
+
+    // Control methods
+    public void start() {
+        this.running = true;
+        this.paused = false;
+    }
+
+    public void pause() {
+        this.paused = true;
+    }
+
+    public void resume() {
+        this.paused = false;
+    }
+
+    public void stop() {
+        this.running = false;
+        this.paused = false;
+    }
+
+    public void reset() {
+        stop();
+        initializeGrid();
+    }
+
+    // State checks
+    public boolean isRunning() { return running; }
+    public boolean isPaused() { return paused; }
+
+    // Getters
+    public CellType[][] getGrid() { return grid; }
+    public List<Creature> getCreatures() { return creatures; }
+    public SimulationStats getStats() { return stats; }
+    public SimulationConfig getConfig() { return config; }
+
+    // Callback setters
+    public void setOnGridUpdate(Runnable callback) { this.onGridUpdate = callback; }
+    public void setOnStatsUpdate(Runnable callback) { this.onStatsUpdate = callback; }
+    public void setOnSimulationEnd(Runnable callback) { this.onSimulationEnd = callback; }
+}
