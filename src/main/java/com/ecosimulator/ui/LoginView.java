@@ -254,8 +254,9 @@ public class LoginView extends VBox {
             return;
         }
 
-        // Validate email format
-        if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+        // Validate email format (RFC 5322 simplified pattern)
+        String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
+        if (!email.matches(emailRegex)) {
             showRegisterError("Ingrese un correo electrónico válido");
             return;
         }

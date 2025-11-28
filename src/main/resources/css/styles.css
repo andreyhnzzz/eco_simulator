@@ -301,6 +301,43 @@
     -fx-font-size: 12px;
 }
 
+/* TextField Styling for Login Form */
+.text-field-custom {
+    -fx-background-color: white;
+    -fx-background-radius: 8px;
+    -fx-border-color: #4CAF50;
+    -fx-border-radius: 8px;
+    -fx-border-width: 2px;
+    -fx-padding: 10px 15px;
+    -fx-font-size: 14px;
+}
+
+.text-field-custom:focused {
+    -fx-border-color: #2E7D32;
+    -fx-effect: dropshadow(gaussian, rgba(76,175,80,0.4), 8, 0, 0, 0);
+}
+
+/* Tab Pane Styling */
+.tab-pane > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: #E8F5E9;
+    -fx-background-radius: 5 5 0 0;
+    -fx-padding: 10px 20px;
+}
+
+.tab-pane > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: white;
+}
+
+.tab-pane > .tab-header-area > .headers-region > .tab .tab-label {
+    -fx-text-fill: #2E7D32;
+    -fx-font-weight: bold;
+}
+
+.tab-pane > .tab-content-area {
+    -fx-background-color: white;
+    -fx-background-radius: 0 0 10px 10px;
+}
+
 /* Animation keyframes (for reference) */
 @keyframes pulse {
     0% { -fx-scale-x: 1; -fx-scale-y: 1; }

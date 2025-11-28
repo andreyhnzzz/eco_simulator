@@ -26,11 +26,11 @@ class UserAuthTest {
 
     @AfterAll
     static void cleanupClass() throws IOException {
-        // Clean up temp directory
+        // Clean up temp directory (delete files before directories using reverse order)
         Files.walk(tempDir)
+            .sorted(java.util.Comparator.reverseOrder())
             .map(Path::toFile)
             .forEach(f -> f.delete());
-        Files.deleteIfExists(tempDir);
     }
 
     @BeforeEach

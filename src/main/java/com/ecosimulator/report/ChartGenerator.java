@@ -14,6 +14,13 @@ import java.util.Map;
  */
 public class ChartGenerator {
 
+    // Color constants for species
+    private static final Color PREDATOR_COLOR = new Color(0xD3, 0x2F, 0x2F);  // Red
+    private static final Color PREY_COLOR = new Color(0x19, 0x76, 0xD2);      // Blue
+    private static final Color THIRD_SPECIES_COLOR = new Color(0xFF, 0x98, 0x00); // Orange
+    private static final Color OCCUPIED_COLOR = new Color(0x4C, 0xAF, 0x50);  // Green
+    private static final Color EMPTY_COLOR = new Color(0x9E, 0x9E, 0x9E);     // Gray
+
     /**
      * Create a pie chart showing population distribution
      * @param data map of species names to their counts
@@ -40,13 +47,13 @@ public class ChartGenerator {
         
         // Set custom colors for species
         if (data.containsKey("Predators")) {
-            plot.setSectionPaint("Predators", new Color(0xD3, 0x2F, 0x2F)); // Red
+            plot.setSectionPaint("Predators", PREDATOR_COLOR);
         }
         if (data.containsKey("Prey")) {
-            plot.setSectionPaint("Prey", new Color(0x19, 0x76, 0xD2)); // Blue
+            plot.setSectionPaint("Prey", PREY_COLOR);
         }
         if (data.containsKey("Third Species")) {
-            plot.setSectionPaint("Third Species", new Color(0xFF, 0x98, 0x00)); // Orange
+            plot.setSectionPaint("Third Species", THIRD_SPECIES_COLOR);
         }
 
         return chart.createBufferedImage(400, 300);
@@ -77,8 +84,8 @@ public class ChartGenerator {
         plot.setOutlinePaint(null);
         plot.setShadowPaint(null);
         
-        plot.setSectionPaint("Occupied", new Color(0x4C, 0xAF, 0x50)); // Green
-        plot.setSectionPaint("Empty", new Color(0x9E, 0x9E, 0x9E)); // Gray
+        plot.setSectionPaint("Occupied", OCCUPIED_COLOR);
+        plot.setSectionPaint("Empty", EMPTY_COLOR);
 
         return chart.createBufferedImage(400, 300);
     }

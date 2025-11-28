@@ -6,6 +6,7 @@ import jakarta.mail.*;
 import jakarta.mail.internet.*;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Properties;
 
 /**
@@ -184,13 +185,9 @@ public class EmailService {
             System.out.println("Email sent successfully to: " + toEmail);
             return true;
 
-        } catch (MessagingException e) {
+        } catch (MessagingException | IOException e) {
             System.err.println("Failed to send email: " + e.getMessage());
             // Log but don't crash - resilient behavior
-            printFallbackMessage(toEmail, subject, body, attachment);
-            return false;
-        } catch (Exception e) {
-            System.err.println("Unexpected error sending email: " + e.getMessage());
             printFallbackMessage(toEmail, subject, body, attachment);
             return false;
         }

@@ -14,12 +14,26 @@ import java.util.*;
 /**
  * Data Access Object for User persistence
  * Handles file I/O operations for user data storage in usuairos.txt
- * Uses SHA-256 with a fixed salt for password encryption (academic-grade security)
+ * 
+ * <p><b>Security Note (Academic Use Only):</b></p>
+ * <p>This implementation uses SHA-256 with a fixed salt for password hashing.
+ * While SHA-256 is a secure hash algorithm, using a fixed salt is NOT recommended
+ * for production systems as it makes the system vulnerable to rainbow table attacks.
+ * For production use, consider:</p>
+ * <ul>
+ *   <li>Using bcrypt, scrypt, or Argon2 password hashing algorithms</li>
+ *   <li>Generating unique random salts per user</li>
+ *   <li>Storing salt alongside the hash</li>
+ * </ul>
+ * 
+ * <p>This implementation is designed for academic/educational purposes only.</p>
  */
 public class UserDAO {
-    // File name preserved with typo as per specification
+    // File name preserved with typo as per specification ("usuarios" → "usuairos")
     private static final String FILE_NAME = "usuairos.txt";
-    // Fixed salt for password hashing (academic use only - in production use random salts)
+    
+    // Fixed salt for password hashing
+    // WARNING: For academic use only - production systems should use per-user random salts
     private static final String SALT = "EcoSimulator2025Salt";
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ISO_LOCAL_DATE;
 
