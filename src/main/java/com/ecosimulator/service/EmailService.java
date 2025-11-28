@@ -1,15 +1,20 @@
 package com.ecosimulator.service;
 
+import com.ecosimulator.auth.User;
 import com.ecosimulator.model.SimulationStats;
+import jakarta.mail.*;
+import jakarta.mail.internet.*;
+
+import java.io.File;
 import java.util.Properties;
 
 /**
  * Email service for sending simulation reports
- * Supports SMTP configuration and Google OAuth2 authentication
+ * Supports SMTP configuration with PDF attachment capability
  * 
- * Note: Full email functionality requires additional configuration:
- * - For SMTP: Configure your email server settings
- * - For Google OAuth: Set up Google Cloud project and credentials
+ * Note: Full email functionality requires SMTP configuration:
+ * - For Gmail: Use an App Password (not regular password)
+ * - Configure with smtp.gmail.com:587 for TLS
  */
 public class EmailService {
     private String smtpHost;
@@ -60,6 +65,31 @@ public class EmailService {
     }
 
     /**
+     * Send simulation report via email with PDF attachment
+     * @param user the recipient user
+     * @param pdfFile the PDF report file to attach
+     * @return true if email was sent successfully
+     */
+    public boolean sendReport(User user, File pdfFile) {
+        if (!configured) {
+            System.err.println("Email service not configured. Please configure SMTP settings.");
+            return false;
+        }
+
+        if (user == null || user.getEmail() == null) {
+            System.err.println("Invalid user or email address.");
+            return false;
+        }
+
+        String subject = "Eco Simulator - Simulation Report";
+        String body = "Hello " + user.getName() + ",\n\n" +
+                      "Please find attached your Eco Simulator report.\n\n" +
+                      "Best regards,\nEco Simulator";
+
+        return sendEmailWithAttachment(user.getEmail(), subject, body, pdfFile);
+    }
+
+    /**
      * Send simulation report via email
      */
     public boolean sendSimulationReport(String toEmail, String subject, SimulationStats stats) {
@@ -84,33 +114,101 @@ public class EmailService {
         if (useOAuth) {
             return sendWithGoogleApi(toEmail, subject, body);
         } else {
-            return sendWithSmtp(toEmail, subject, body);
+            return sendWithSmtp(toEmail, subject, body, null);
         }
     }
 
     /**
-     * Send email using SMTP
-     * Note: This is a placeholder - full implementation requires Jakarta Mail API
+     * Send email with PDF attachment
      */
-    private boolean sendWithSmtp(String toEmail, String subject, String body) {
-        // Placeholder for SMTP email sending
-        // Full implementation would use jakarta.mail API:
-        // 1. Create Properties with SMTP settings
-        // 2. Create Session with Authenticator
-        // 3. Create MimeMessage
-        // 4. Use Transport.send()
-        
-        System.out.println("=== Email Service (SMTP) ===");
+    public boolean sendEmailWithAttachment(String toEmail, String subject, String body, File attachment) {
+        if (!configured) {
+            System.err.println("Email service not configured.");
+            return false;
+        }
+
+        return sendWithSmtp(toEmail, subject, body, attachment);
+    }
+
+    /**
+     * Send email using SMTP with optional attachment
+     * Uses Jakarta Mail API for full email functionality
+     */
+    private boolean sendWithSmtp(String toEmail, String subject, String body, File attachment) {
+        try {
+            // Configure SMTP properties
+            Properties props = new Properties();
+            props.put("mail.smtp.auth", "true");
+            props.put("mail.smtp.starttls.enable", "true");
+            props.put("mail.smtp.host", smtpHost);
+            props.put("mail.smtp.port", String.valueOf(smtpPort));
+            props.put("mail.smtp.ssl.protocols", "TLSv1.2");
+            props.put("mail.smtp.ssl.trust", smtpHost);
+
+            // Create session with authentication
+            Session session = Session.getInstance(props, new Authenticator() {
+                @Override
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    return new PasswordAuthentication(username, password);
+                }
+            });
+
+            // Create message
+            Message message = new MimeMessage(session);
+            message.setFrom(new InternetAddress(username));
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
+            message.setSubject(subject);
+
+            if (attachment != null && attachment.exists()) {
+                // Create multipart message with attachment
+                Multipart multipart = new MimeMultipart();
+
+                // Text part
+                MimeBodyPart textPart = new MimeBodyPart();
+                textPart.setText(body);
+                multipart.addBodyPart(textPart);
+
+                // Attachment part
+                MimeBodyPart attachmentPart = new MimeBodyPart();
+                attachmentPart.attachFile(attachment);
+                multipart.addBodyPart(attachmentPart);
+
+                message.setContent(multipart);
+            } else {
+                message.setText(body);
+            }
+
+            // Send message
+            Transport.send(message);
+            
+            System.out.println("Email sent successfully to: " + toEmail);
+            return true;
+
+        } catch (MessagingException e) {
+            System.err.println("Failed to send email: " + e.getMessage());
+            // Log but don't crash - resilient behavior
+            printFallbackMessage(toEmail, subject, body, attachment);
+            return false;
+        } catch (Exception e) {
+            System.err.println("Unexpected error sending email: " + e.getMessage());
+            printFallbackMessage(toEmail, subject, body, attachment);
+            return false;
+        }
+    }
+
+    /**
+     * Print fallback message when email fails
+     */
+    private void printFallbackMessage(String toEmail, String subject, String body, File attachment) {
+        System.out.println("=== Email Service (Fallback) ===");
+        System.out.println("Email could not be sent. Details:");
         System.out.println("To: " + toEmail);
         System.out.println("Subject: " + subject);
-        System.out.println("Host: " + smtpHost + ":" + smtpPort);
-        System.out.println("---");
-        System.out.println(body);
-        System.out.println("===========================");
-        System.out.println("Note: SMTP sending requires Jakarta Mail API configuration.");
-        System.out.println("Add 'requires jakarta.mail;' to module-info.java when ready.");
-        
-        return true; // Returns true to indicate the message was processed
+        if (attachment != null) {
+            System.out.println("Attachment: " + attachment.getAbsolutePath());
+        }
+        System.out.println("The report has been saved locally.");
+        System.out.println("================================");
     }
 
     /**
