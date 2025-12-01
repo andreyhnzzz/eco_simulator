@@ -30,6 +30,12 @@ Each scenario can be run with optional extensions:
 - Color-coded species visualization
 - Real-time statistics display
 
+### Email Reports
+- Automatic PDF report generation at simulation end
+- Email sending with PDF attachment
+- SMTP configuration UI with test connection
+- Fallback to local file storage if email fails
+
 ## Requirements
 
 - Java 17 or higher
@@ -63,9 +69,14 @@ src/main/java/com/ecosimulator/
 │   ├── SimulationEngine.java # Core simulation logic
 │   └── SimulationRunner.java # Timer-based automatic execution
 ├── service/
-│   └── EmailService.java     # Email notifications (SMTP/Google OAuth)
+│   └── EmailService.java     # Email notifications (SMTP)
+├── report/
+│   ├── PDFReportGenerator.java  # PDF report generation
+│   └── ChartGenerator.java      # Chart generation for reports
 └── ui/
-    └── SimulationView.java   # JavaFX main view
+    ├── SimulationView.java      # JavaFX main view
+    ├── LoginView.java           # Login/registration view
+    └── SMTPSettingsController.java  # SMTP settings dialog
 ```
 
 ## Simulation Rules
@@ -77,25 +88,137 @@ src/main/java/com/ecosimulator/
 5. Creatures with enough energy can reproduce
 6. Mutated creatures have a 50% bonus to efficiency
 
-## Email Configuration (Optional)
+## Email Configuration
 
-The application supports email notifications for simulation reports. To enable:
+The application supports sending simulation reports via email. When a simulation completes, a PDF report is generated and can be automatically sent to the logged-in user's email address.
 
-### SMTP Configuration
-```java
-emailService.configureSmtp("smtp.gmail.com", 587, "user@gmail.com", "password");
+### Quick Setup
+
+Click the "⚙ Configurar Email" button in the simulation view to open the SMTP settings dialog. Use the preset buttons for quick configuration.
+
+### Configuration Options
+
+#### 1. Gmail with App Password (Recommended for production)
+
+Gmail requires an App Password for SMTP access:
+
+1. Enable 2-Factor Authentication on your Google account
+2. Go to https://myaccount.google.com/apppasswords
+3. Create a new App Password for "Mail"
+4. Use these settings:
+   - **Host**: `smtp.gmail.com`
+   - **Port**: `587`
+   - **Username**: Your Gmail address
+   - **Password**: The 16-character App Password (no spaces)
+   - **STARTTLS**: Enabled
+   - **SSL**: Disabled
+
+#### 2. MailHog (Recommended for local development/testing)
+
+MailHog is a local email testing tool that catches all outgoing emails.
+
+Start MailHog with Docker:
+```bash
+docker run -d -p 1025:1025 -p 8025:8025 mailhog/mailhog
 ```
 
-### Google OAuth2
-1. Create a project in Google Cloud Console
-2. Enable Gmail API
-3. Create OAuth 2.0 credentials
-4. Configure the application with client ID and secret
+Configuration:
+- **Host**: `localhost`
+- **Port**: `1025`
+- **Username**: (leave empty)
+- **Password**: (leave empty)
+- **From Address**: `test@localhost`
+- **STARTTLS**: Disabled
+- **SSL**: Disabled
+
+View captured emails at: http://localhost:8025
+
+#### 3. Mailtrap (Alternative for testing)
+
+Mailtrap is a cloud-based email testing service:
+- **Host**: `smtp.mailtrap.io`
+- **Port**: `2525`
+- **Username**: Your Mailtrap inbox username
+- **Password**: Your Mailtrap inbox password
+- **STARTTLS**: Enabled
+
+#### 4. Environment Variables
+
+You can also configure SMTP via environment variables:
+```bash
+export SMTP_HOST=smtp.gmail.com
+export SMTP_PORT=587
+export SMTP_USERNAME=your.email@gmail.com
+export SMTP_PASSWORD=your-app-password
+export SMTP_FROM_ADDRESS=your.email@gmail.com
+export SMTP_STARTTLS=true
+export SMTP_SSL=false
+```
+
+Environment variables take precedence over the configuration file.
+
+### Configuration File
+
+Copy `config/smtp.example.properties` to `config/smtp.properties` and edit:
+```properties
+smtp.host=smtp.gmail.com
+smtp.port=587
+smtp.username=your.email@gmail.com
+smtp.password=your-app-password
+smtp.from=your.email@gmail.com
+smtp.starttls=true
+smtp.ssl=false
+```
+
+**Note**: The `config/smtp.properties` file is excluded from version control for security.
+
+### Fallback Behavior
+
+If email sending fails (network issues, invalid credentials, etc.):
+- The PDF report is saved to `./outgoing_reports/`
+- The filename includes the recipient email and timestamp
+- The application continues to run normally (no crash)
+- A notification is shown to the user
+
+### Testing SMTP Connection
+
+Use the "🔌 Test Connection" button in the SMTP settings dialog to verify your configuration before saving.
+
+## Testing
+
+The project includes automated tests using JUnit 5 and GreenMail (in-memory SMTP server):
+
+```bash
+# Run all tests
+mvn test
+
+# Run email service tests only
+mvn test -Dtest=EmailServiceTest
+```
+
+### Test Coverage
+
+- EmailService: Connection, sending, attachments, fallback behavior
+- PDF Generation: Report creation, content validation
+- Simulation Engine: Turn execution, creature behavior
+- User Authentication: Login, registration, session management
 
 ## Technologies Used
 
 - **JavaFX 21** - UI Framework
-- **JUnit 5** - Testing
+- **Jakarta Mail (Angus Mail 2.0.3)** - Email sending
+- **Apache PDFBox 3.0.2** - PDF generation
+- **JFreeChart 1.5.4** - Chart generation
+- **JUnit 5** - Unit testing
+- **GreenMail 2.1.0** - Email testing (in-memory SMTP)
+
+## Security Notes
+
+- Never commit real credentials to version control
+- Use App Passwords instead of regular passwords for Gmail
+- The `config/smtp.properties` file is in `.gitignore`
+- Passwords are not saved to disk by the settings dialog
+- Use environment variables for CI/CD deployments
 
 ## License
 
