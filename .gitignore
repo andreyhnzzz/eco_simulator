@@ -45,3 +45,12 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.bak
+
+# SMTP credentials (DO NOT COMMIT!)
+config/smtp.properties
+
+# Outgoing reports fallback directory
+outgoing_reports/
+
+# Generated reports
+reports/

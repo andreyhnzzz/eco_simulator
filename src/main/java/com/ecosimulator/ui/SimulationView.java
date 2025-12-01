@@ -1,6 +1,8 @@
 package com.ecosimulator.ui;
 
+import com.ecosimulator.auth.Session;
 import com.ecosimulator.model.*;
+import com.ecosimulator.report.PDFReportGenerator;
 import com.ecosimulator.service.EmailService;
 import com.ecosimulator.simulation.*;
 
@@ -14,12 +16,23 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.animation.*;
+import javafx.stage.Stage;
 import javafx.util.Duration;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Main simulation view controller
  */
 public class SimulationView extends BorderPane {
+    private static final Logger LOGGER = Logger.getLogger(SimulationView.class.getName());
+
     // UI Components
     private GridPane gridPane;
     private ComboBox<Scenario> scenarioComboBox;
@@ -157,8 +170,13 @@ public class SimulationView extends BorderPane {
         resetButton.getStyleClass().add("action-button");
         resetButton.getStyleClass().add("reset-button");
         resetButton.setOnAction(e -> resetSimulation());
+
+        // Settings button
+        Button settingsButton = new Button("⚙ Configurar Email");
+        settingsButton.getStyleClass().add("action-button");
+        settingsButton.setOnAction(e -> openSmtpSettings());
         
-        buttonBox.getChildren().addAll(startButton, pauseButton, resetButton);
+        buttonBox.getChildren().addAll(startButton, pauseButton, resetButton, settingsButton);
 
         controlPanel.getChildren().addAll(titleLabel, scenarioBox, extensionsBox, speedBox, buttonBox);
         return controlPanel;
@@ -412,6 +430,9 @@ public class SimulationView extends BorderPane {
             thirdSpeciesCheckBox.setDisable(false);
             mutationsCheckBox.setDisable(false);
 
+            // Generate PDF report and send via email
+            generateAndSendReport(stats);
+
             // Show end dialog
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle("Simulación Completada");
@@ -432,6 +453,116 @@ public class SimulationView extends BorderPane {
             ));
             alert.showAndWait();
         });
+    }
+
+    /**
+     * Generate PDF report and attempt to send it via email.
+     * Shows non-blocking notification on success or failure.
+     */
+    private void generateAndSendReport(SimulationStats stats) {
+        // Generate PDF report
+        String reportFilename = PDFReportGenerator.getDefaultFilename();
+        Path reportsDir = Paths.get("reports");
+        
+        try {
+            if (!Files.exists(reportsDir)) {
+                Files.createDirectories(reportsDir);
+            }
+            
+            String reportPath = reportsDir.resolve(reportFilename).toString();
+            
+            // Find extinction turn if applicable
+            int extinctionTurn = -1;
+            if (stats.getPredatorCount() == 0 || stats.getPreyCount() == 0) {
+                extinctionTurn = stats.getTurn();
+            }
+            
+            PDFReportGenerator.generateSimpleReport(
+                reportPath,
+                stats.getTurn(),
+                stats,
+                DEFAULT_GRID_SIZE,
+                extinctionTurn
+            );
+            
+            File reportFile = new File(reportPath);
+            LOGGER.info("PDF report generated: " + reportPath);
+            
+            // Check if user is logged in and has email
+            if (Session.isLoggedIn() && Session.getUser().getEmail() != null) {
+                String userEmail = Session.getUser().getEmail();
+                String subject = "Eco Simulator - Simulation Report";
+                String body = "Hello " + Session.getUser().getName() + ",\n\n" +
+                             "Attached is your simulation report.\n\n" +
+                             "Simulation Results:\n" +
+                             "- Final Turn: " + stats.getTurn() + "\n" +
+                             "- Predators: " + stats.getPredatorCount() + "\n" +
+                             "- Prey: " + stats.getPreyCount() + "\n" +
+                             "- Third Species: " + stats.getThirdSpeciesCount() + "\n" +
+                             "- Result: " + stats.getWinner() + "\n\n" +
+                             "Best regards,\nEco Simulator";
+                
+                // Attempt to send email
+                boolean emailSent = emailService.sendReport(userEmail, reportFile, subject, body);
+                
+                // Show non-blocking notification
+                showEmailNotification(emailSent, userEmail, reportPath);
+            } else {
+                LOGGER.info("User not logged in or no email configured. Report saved locally only.");
+                showNotification("📄 Report Saved", 
+                    "Report saved to: " + reportPath + "\n" +
+                    "Login and configure email to send reports automatically.",
+                    Alert.AlertType.INFORMATION);
+            }
+            
+        } catch (IOException e) {
+            LOGGER.log(Level.WARNING, "Failed to generate PDF report", e);
+            showNotification("⚠️ Report Generation Failed", 
+                "Could not generate PDF report: " + e.getMessage(),
+                Alert.AlertType.WARNING);
+        }
+    }
+
+    /**
+     * Show notification about email send status.
+     */
+    private void showEmailNotification(boolean success, String email, String reportPath) {
+        if (success) {
+            showNotification("📧 Email Sent", 
+                "Report sent to: " + email + "\n" +
+                "Local copy: " + reportPath,
+                Alert.AlertType.INFORMATION);
+        } else {
+            String fallbackDir = EmailService.getFallbackDirectory();
+            showNotification("📧 Email Failed", 
+                "Could not send email to: " + email + "\n" +
+                "Report saved locally:\n" +
+                "- Original: " + reportPath + "\n" +
+                "- Fallback: " + fallbackDir + "/\n\n" +
+                "Check SMTP settings or try again later.",
+                Alert.AlertType.WARNING);
+        }
+    }
+
+    /**
+     * Show a non-blocking notification alert.
+     */
+    private void showNotification(String title, String message, Alert.AlertType type) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(type);
+            alert.setTitle(title);
+            alert.setHeaderText(null);
+            alert.setContentText(message);
+            alert.show(); // Non-blocking
+        });
+    }
+
+    /**
+     * Open SMTP settings dialog.
+     */
+    private void openSmtpSettings() {
+        Stage stage = (Stage) getScene().getWindow();
+        SMTPSettingsController.showDialog(stage, emailService);
     }
 
     private void animateButton(Button button) {

@@ -10,9 +10,9 @@ module com.ecosimulator {
     requires org.jfree.jfreechart;
     requires java.desktop;
     
-    // Email
+    // Email - using Angus Mail (Eclipse Jakarta Mail implementation)
     requires jakarta.mail;
-    requires jakarta.activation;
+    requires java.logging;
 
     opens com.ecosimulator to javafx.fxml;
     opens com.ecosimulator.ui to javafx.fxml;
