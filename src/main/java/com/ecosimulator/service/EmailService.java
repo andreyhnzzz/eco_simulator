@@ -311,13 +311,8 @@ public class EmailService {
                 // Attachment part
                 MimeBodyPart attachmentPart = new MimeBodyPart();
                 attachmentPart.attachFile(attachment);
-                
-                // Set content type based on file
-                String contentType = Files.probeContentType(attachment.toPath());
-                if (contentType == null) {
-                    contentType = "application/pdf";
-                }
-                attachmentPart.setHeader("Content-Type", contentType);
+                // Set content type - primarily used for PDF reports
+                attachmentPart.setHeader("Content-Type", "application/pdf");
                 
                 multipart.addBodyPart(attachmentPart);
                 message.setContent(multipart);
@@ -398,10 +393,13 @@ public class EmailService {
                 ? recipientEmail.replaceAll("[^a-zA-Z0-9]", "_") 
                 : "unknown";
             String originalName = pdf != null ? pdf.getName() : "report.pdf";
+            // Remove .pdf extension properly (only from the end)
+            String baseName = originalName;
+            if (baseName.toLowerCase().endsWith(".pdf")) {
+                baseName = baseName.substring(0, baseName.length() - 4);
+            }
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            String fallbackName = sanitizedRecipient + "_" + 
-                                  originalName.replace(".pdf", "") + "_" + 
-                                  timestamp + ".pdf";
+            String fallbackName = sanitizedRecipient + "_" + baseName + "_" + timestamp + ".pdf";
 
             Path fallbackPath = fallbackDir.resolve(fallbackName);
 

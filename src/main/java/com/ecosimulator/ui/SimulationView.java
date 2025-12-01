@@ -489,15 +489,17 @@ public class SimulationView extends BorderPane {
             LOGGER.info("PDF report generated: " + reportPath);
             
             // Check if user is logged in and has email
-            if (Session.isLoggedIn() && Session.getUser().getEmail() != null) {
-                String userEmail = Session.getUser().getEmail();
-                String subject = "Eco Simulator - Simulation Report";
-                String body = "Hello " + Session.getUser().getName() + ",\n\n" +
-                             "Attached is your simulation report.\n\n" +
-                             "Simulation Results:\n" +
-                             "- Final Turn: " + stats.getTurn() + "\n" +
-                             "- Predators: " + stats.getPredatorCount() + "\n" +
-                             "- Prey: " + stats.getPreyCount() + "\n" +
+            if (Session.isLoggedIn()) {
+                var currentUser = Session.getUser();
+                if (currentUser != null && currentUser.getEmail() != null && !currentUser.getEmail().isEmpty()) {
+                    String userEmail = currentUser.getEmail();
+                    String subject = "Eco Simulator - Simulation Report";
+                    String body = "Hello " + currentUser.getName() + ",\n\n" +
+                                 "Attached is your simulation report.\n\n" +
+                                 "Simulation Results:\n" +
+                                 "- Final Turn: " + stats.getTurn() + "\n" +
+                                 "- Predators: " + stats.getPredatorCount() + "\n" +
+                                 "- Prey: " + stats.getPreyCount() + "\n" +
                              "- Third Species: " + stats.getThirdSpeciesCount() + "\n" +
                              "- Result: " + stats.getWinner() + "\n\n" +
                              "Best regards,\nEco Simulator";
@@ -507,11 +509,18 @@ public class SimulationView extends BorderPane {
                 
                 // Show non-blocking notification
                 showEmailNotification(emailSent, userEmail, reportPath);
+                } else {
+                    LOGGER.info("User not logged in or no email configured. Report saved locally only.");
+                    showNotification("📄 Report Saved", 
+                        "Report saved to: " + reportPath + "\n" +
+                        "Login and configure email to send reports automatically.",
+                        Alert.AlertType.INFORMATION);
+                }
             } else {
-                LOGGER.info("User not logged in or no email configured. Report saved locally only.");
+                LOGGER.info("User not logged in. Report saved locally only.");
                 showNotification("📄 Report Saved", 
                     "Report saved to: " + reportPath + "\n" +
-                    "Login and configure email to send reports automatically.",
+                    "Login to enable email sending.",
                     Alert.AlertType.INFORMATION);
             }
             
