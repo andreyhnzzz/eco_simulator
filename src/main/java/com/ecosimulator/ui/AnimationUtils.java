@@ -393,12 +393,13 @@ public class AnimationUtils {
 
     /**
      * Stats counter animation - counting up effect
+     * Uses fewer keyframes for better performance
      */
     public static Timeline createCounterAnimation(javafx.scene.control.Label label, 
                                                    int fromValue, int toValue, 
                                                    Duration duration) {
         Timeline timeline = new Timeline();
-        int steps = 30;
+        int steps = 10; // Reduced from 30 for better performance
         double stepDuration = duration.toMillis() / steps;
         
         for (int i = 0; i <= steps; i++) {

@@ -11,7 +11,6 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.effect.DropShadow;
-import javafx.scene.effect.GaussianBlur;
 import javafx.scene.effect.Glow;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -31,8 +30,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Main simulation view controller with premium animations and visual effects
- * Features glassmorphism panels, smooth animations, and modern UI/UX
+ * Main simulation view controller with premium animations and glassmorphism effects
  */
 public class SimulationView extends BorderPane {
     private static final Logger LOGGER = Logger.getLogger(SimulationView.class.getName());
@@ -95,9 +93,6 @@ public class SimulationView extends BorderPane {
     private void initializeUI() {
         setPadding(new Insets(20));
         
-        // Create a layered background with subtle blur effect
-        createBackgroundLayer();
-        
         // Top - Controls with glassmorphism panel
         controlPanel = createControlPanel();
         setTop(controlPanel);
@@ -112,14 +107,6 @@ public class SimulationView extends BorderPane {
         // Bottom - Status
         statusPanel = createStatusPanel();
         setBottom(statusPanel);
-    }
-
-    /**
-     * Creates a subtle background layer for visual depth
-     */
-    private void createBackgroundLayer() {
-        // The main background gradient is applied via CSS
-        getStyleClass().add("main-view");
     }
 
     private VBox createControlPanel() {
@@ -148,9 +135,7 @@ public class SimulationView extends BorderPane {
         scenarioComboBox.setValue(Scenario.BALANCED);
         scenarioComboBox.getStyleClass().add("combo-box-custom");
         scenarioComboBox.setOnAction(e -> updateConfig());
-        
-        // Add tooltip
-        scenarioComboBox.setTooltip(new Tooltip("Seleccione el escenario inicial de la simulación"));
+        scenarioComboBox.setTooltip(new Tooltip("Seleccione el escenario inicial"));
         
         scenarioBox.getChildren().addAll(scenarioLabel, scenarioComboBox);
 
@@ -161,12 +146,10 @@ public class SimulationView extends BorderPane {
         thirdSpeciesCheckBox = new CheckBox("Tercer Especie 🦎");
         thirdSpeciesCheckBox.getStyleClass().add("extension-checkbox");
         thirdSpeciesCheckBox.setOnAction(e -> updateConfig());
-        thirdSpeciesCheckBox.setTooltip(new Tooltip("Añade una tercera especie al ecosistema"));
         
         mutationsCheckBox = new CheckBox("Mutaciones 🧬");
         mutationsCheckBox.getStyleClass().add("extension-checkbox");
         mutationsCheckBox.setOnAction(e -> updateConfig());
-        mutationsCheckBox.setTooltip(new Tooltip("Habilita mutaciones genéticas aleatorias"));
         
         extensionsBox.getChildren().addAll(thirdSpeciesCheckBox, mutationsCheckBox);
 
@@ -231,9 +214,6 @@ public class SimulationView extends BorderPane {
         return panel;
     }
     
-    /**
-     * Creates a button with hover and press animations
-     */
     private Button createAnimatedButton(String text, String styleClass) {
         Button button = new Button(text);
         button.getStyleClass().addAll("action-button", styleClass);
@@ -259,27 +239,11 @@ public class SimulationView extends BorderPane {
                 cell.setStrokeWidth(0.5);
                 cell.setArcWidth(4);
                 cell.setArcHeight(4);
-                
-                // Add subtle hover effect to cells
-                final int row = i;
-                final int col = j;
-                cell.setOnMouseEntered(e -> {
-                    if (engine != null && engine.getGrid()[row][col] != CellType.EMPTY) {
-                        cell.setScaleX(1.15);
-                        cell.setScaleY(1.15);
-                    }
-                });
-                cell.setOnMouseExited(e -> {
-                    cell.setScaleX(1.0);
-                    cell.setScaleY(1.0);
-                });
-                
                 gridCells[i][j] = cell;
                 gridPane.add(cell, j, i);
             }
         }
         
-        // Wrap in a StackPane for better centering
         StackPane gridContainer = new StackPane(gridPane);
         gridContainer.setPadding(new Insets(10));
         
@@ -287,8 +251,6 @@ public class SimulationView extends BorderPane {
         scrollPane.setFitToWidth(true);
         scrollPane.setFitToHeight(true);
         scrollPane.getStyleClass().add("grid-scroll");
-        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         
         return scrollPane;
     }
@@ -309,9 +271,7 @@ public class SimulationView extends BorderPane {
         turnLabel.setStyle("-fx-font-size: 16px;");
 
         Separator sep1 = new Separator();
-        sep1.getStyleClass().add("separator");
 
-        // Stats with colored icons
         predatorLabel = new Label("🐺 Depredadores: 0");
         predatorLabel.getStyleClass().addAll("stat-label", "stat-predator");
         
@@ -325,19 +285,16 @@ public class SimulationView extends BorderPane {
         mutatedLabel.getStyleClass().addAll("stat-label", "stat-mutated");
 
         Separator sep2 = new Separator();
-        sep2.getStyleClass().add("separator");
 
-        // Legend with enhanced styling
         Label legendTitle = new Label("📍 Leyenda");
         legendTitle.getStyleClass().add("legend-title");
 
         VBox legendBox = new VBox(10);
-        legendBox.getStyleClass().add("legend-box");
         legendBox.getChildren().addAll(
-            createLegendItem("Depredador", "#D32F2F", "🐺"),
-            createLegendItem("Presa", "#1976D2", "🐰"),
-            createLegendItem("Tercer Especie", "#FF9800", "🦎"),
-            createLegendItem("Vacío", "#2E7D32", "🌿")
+            createLegendItem("🐺 Depredador", "#D32F2F"),
+            createLegendItem("🐰 Presa", "#1976D2"),
+            createLegendItem("🦎 Tercer Especie", "#FF9800"),
+            createLegendItem("🌿 Vacío", "#2E7D32")
         );
 
         panel.getChildren().addAll(
@@ -349,10 +306,9 @@ public class SimulationView extends BorderPane {
         return panel;
     }
 
-    private HBox createLegendItem(String text, String color, String emoji) {
+    private HBox createLegendItem(String text, String color) {
         HBox item = new HBox(10);
         item.setAlignment(Pos.CENTER_LEFT);
-        item.getStyleClass().add("legend-item");
         
         Rectangle colorBox = new Rectangle(18, 18);
         colorBox.setFill(Color.web(color));
@@ -361,14 +317,13 @@ public class SimulationView extends BorderPane {
         colorBox.setStroke(Color.web(color).darker());
         colorBox.setStrokeWidth(1);
         
-        // Add subtle shadow to legend color boxes
         DropShadow shadow = new DropShadow();
         shadow.setRadius(3);
         shadow.setOffsetY(1);
         shadow.setColor(Color.rgb(0, 0, 0, 0.2));
         colorBox.setEffect(shadow);
         
-        Label label = new Label(emoji + " " + text);
+        Label label = new Label(text);
         label.getStyleClass().add("legend-label");
         
         item.getChildren().addAll(colorBox, label);
@@ -389,7 +344,6 @@ public class SimulationView extends BorderPane {
         progressBar.setPrefHeight(12);
         progressBar.getStyleClass().add("progress-bar-custom");
 
-        // Add a turn counter next to progress
         Label progressLabel = new Label("0%");
         progressLabel.getStyleClass().add("speed-value");
         progressBar.progressProperty().addListener((obs, oldVal, newVal) -> {
@@ -424,10 +378,7 @@ public class SimulationView extends BorderPane {
 
         runner = new SimulationRunner(engine);
 
-        // Clear any existing mutation animations
-        mutationAnimations.values().forEach(Timeline::stop);
-        mutationAnimations.clear();
-
+        stopMutationAnimations();
         updateGridView();
         updateStatsView();
         
@@ -435,19 +386,21 @@ public class SimulationView extends BorderPane {
             (thirdSpecies ? " + Tercer Especie" : "") +
             (mutations ? " + Mutaciones" : ""));
     }
+    
+    private void stopMutationAnimations() {
+        mutationAnimations.values().forEach(Timeline::stop);
+        mutationAnimations.clear();
+    }
 
     private void startSimulation() {
-        if (runner != null) {
-            if (!runner.isRunning()) {
-                runner.start();
-                startButton.setDisable(true);
-                pauseButton.setDisable(false);
-                scenarioComboBox.setDisable(true);
-                thirdSpeciesCheckBox.setDisable(true);
-                mutationsCheckBox.setDisable(true);
-                statusLabel.setText("🔄 Simulación en progreso...");
-                statusLabel.getStyleClass().add("status-label-success");
-            }
+        if (runner != null && !runner.isRunning()) {
+            runner.start();
+            startButton.setDisable(true);
+            pauseButton.setDisable(false);
+            scenarioComboBox.setDisable(true);
+            thirdSpeciesCheckBox.setDisable(true);
+            mutationsCheckBox.setDisable(true);
+            statusLabel.setText("🔄 Simulación en progreso...");
         }
     }
 
@@ -457,14 +410,10 @@ public class SimulationView extends BorderPane {
                 runner.resume();
                 pauseButton.setText("⏸ Pausar");
                 statusLabel.setText("🔄 Simulación en progreso...");
-                statusLabel.getStyleClass().removeAll("status-label-warning");
-                statusLabel.getStyleClass().add("status-label-success");
             } else {
                 runner.pause();
                 pauseButton.setText("▶ Reanudar");
                 statusLabel.setText("⏸ Simulación pausada");
-                statusLabel.getStyleClass().removeAll("status-label-success");
-                statusLabel.getStyleClass().add("status-label-warning");
             }
         }
     }
@@ -479,41 +428,26 @@ public class SimulationView extends BorderPane {
         scenarioComboBox.setDisable(false);
         thirdSpeciesCheckBox.setDisable(false);
         mutationsCheckBox.setDisable(false);
-        
-        // Clear status classes
-        statusLabel.getStyleClass().removeAll("status-label-success", "status-label-warning", "status-label-error");
-        
         updateConfig();
         statusLabel.setText("🔄 Simulación reiniciada - Lista para iniciar");
-        
-        // Play a subtle reset animation on the grid
         playGridResetAnimation();
     }
-
-    /**
-     * Plays a ripple-like reset animation across the grid
-     */
+    
     private void playGridResetAnimation() {
         for (int i = 0; i < DEFAULT_GRID_SIZE; i++) {
             for (int j = 0; j < DEFAULT_GRID_SIZE; j++) {
                 final Rectangle cell = gridCells[i][j];
-                final int delay = (i + j) * 15; // Diagonal wave effect
+                final int delay = (i + j) * 10;
                 
                 PauseTransition pause = new PauseTransition(Duration.millis(delay));
                 pause.setOnFinished(e -> {
                     cell.setScaleX(0.8);
                     cell.setScaleY(0.8);
-                    cell.setOpacity(0.5);
-                    
-                    ScaleTransition scale = new ScaleTransition(Duration.millis(200), cell);
+                    ScaleTransition scale = new ScaleTransition(Duration.millis(150), cell);
                     scale.setToX(1.0);
                     scale.setToY(1.0);
                     scale.setInterpolator(AnimationUtils.EASE_OUT_BACK);
-                    
-                    FadeTransition fade = new FadeTransition(Duration.millis(200), cell);
-                    fade.setToValue(1.0);
-                    
-                    new ParallelTransition(scale, fade).play();
+                    scale.play();
                 });
                 pause.play();
             }
@@ -532,52 +466,41 @@ public class SimulationView extends BorderPane {
                     Color color = Color.web(cellType.getColor());
                     Rectangle cell = gridCells[i][j];
                     
-                    // Check if creature at this position is mutated using O(1) lookup
                     boolean isMutated = engine.isCreatureMutatedAt(i, j);
                     String posKey = i + "," + j;
                     
                     // Animate cell state changes
                     if (cellType != prevType) {
                         if (prevType == CellType.EMPTY && cellType != CellType.EMPTY) {
-                            // Spawn animation
                             playCellSpawnAnimation(cell, color);
                         } else if (prevType != CellType.EMPTY && cellType == CellType.EMPTY) {
-                            // Death animation
                             playCellDeathAnimation(cell);
                         } else {
-                            // Type change (e.g., reproduction)
                             playReproductionEffect(cell, color);
                         }
                     } else {
                         cell.setFill(color);
                     }
                     
-                    // Handle mutation glow animation
-                    if (isMutated) {
-                        if (!mutationAnimations.containsKey(posKey)) {
-                            Glow glow = new Glow(0.6);
-                            DropShadow shadow = new DropShadow();
-                            shadow.setRadius(6);
-                            shadow.setSpread(0.4);
-                            shadow.setColor(Color.rgb(156, 39, 176, 0.8));
-                            shadow.setInput(glow);
-                            cell.setEffect(shadow);
-                            
-                            // Create pulsing animation for mutated creatures
-                            Timeline pulseTimeline = new Timeline(
-                                new KeyFrame(Duration.ZERO, 
-                                    new KeyValue(glow.levelProperty(), 0.4)),
-                                new KeyFrame(Duration.millis(600), 
-                                    new KeyValue(glow.levelProperty(), 0.8)),
-                                new KeyFrame(Duration.millis(1200), 
-                                    new KeyValue(glow.levelProperty(), 0.4))
-                            );
-                            pulseTimeline.setCycleCount(Animation.INDEFINITE);
-                            pulseTimeline.play();
-                            mutationAnimations.put(posKey, pulseTimeline);
-                        }
-                    } else {
-                        // Remove mutation animation if creature is no longer mutated
+                    // Handle mutation glow
+                    if (isMutated && !mutationAnimations.containsKey(posKey)) {
+                        Glow glow = new Glow(0.6);
+                        DropShadow shadow = new DropShadow();
+                        shadow.setRadius(6);
+                        shadow.setSpread(0.4);
+                        shadow.setColor(Color.rgb(156, 39, 176, 0.8));
+                        shadow.setInput(glow);
+                        cell.setEffect(shadow);
+                        
+                        Timeline pulseTimeline = new Timeline(
+                            new KeyFrame(Duration.ZERO, new KeyValue(glow.levelProperty(), 0.4)),
+                            new KeyFrame(Duration.millis(600), new KeyValue(glow.levelProperty(), 0.8)),
+                            new KeyFrame(Duration.millis(1200), new KeyValue(glow.levelProperty(), 0.4))
+                        );
+                        pulseTimeline.setCycleCount(Animation.INDEFINITE);
+                        pulseTimeline.play();
+                        mutationAnimations.put(posKey, pulseTimeline);
+                    } else if (!isMutated) {
                         Timeline existingAnimation = mutationAnimations.remove(posKey);
                         if (existingAnimation != null) {
                             existingAnimation.stop();
@@ -593,37 +516,31 @@ public class SimulationView extends BorderPane {
         });
     }
     
-    /**
-     * Play spawn animation for a new creature
-     */
     private void playCellSpawnAnimation(Rectangle cell, Color targetColor) {
         cell.setFill(targetColor);
         cell.setScaleX(0.3);
         cell.setScaleY(0.3);
         cell.setOpacity(0);
         
-        ScaleTransition scale = new ScaleTransition(Duration.millis(250), cell);
+        ScaleTransition scale = new ScaleTransition(Duration.millis(200), cell);
         scale.setToX(1.0);
         scale.setToY(1.0);
         scale.setInterpolator(AnimationUtils.EASE_OUT_BACK);
         
-        FadeTransition fade = new FadeTransition(Duration.millis(200), cell);
+        FadeTransition fade = new FadeTransition(Duration.millis(150), cell);
         fade.setToValue(1.0);
         
         new ParallelTransition(scale, fade).play();
     }
     
-    /**
-     * Play death animation for a creature
-     */
     private void playCellDeathAnimation(Rectangle cell) {
         Color emptyColor = Color.web(CellType.EMPTY.getColor());
         
-        ScaleTransition scale = new ScaleTransition(Duration.millis(200), cell);
+        ScaleTransition scale = new ScaleTransition(Duration.millis(150), cell);
         scale.setToX(0.3);
         scale.setToY(0.3);
         
-        FadeTransition fade = new FadeTransition(Duration.millis(200), cell);
+        FadeTransition fade = new FadeTransition(Duration.millis(150), cell);
         fade.setToValue(0.3);
         
         ParallelTransition death = new ParallelTransition(scale, fade);
@@ -637,20 +554,13 @@ public class SimulationView extends BorderPane {
         death.play();
     }
     
-    /**
-     * Play reproduction pulse effect
-     */
     private void playReproductionEffect(Rectangle cell, Color targetColor) {
         cell.setFill(targetColor);
-        
-        ScaleTransition pulse = new ScaleTransition(Duration.millis(150), cell);
-        pulse.setFromX(1.0);
-        pulse.setFromY(1.0);
-        pulse.setToX(1.25);
-        pulse.setToY(1.25);
+        ScaleTransition pulse = new ScaleTransition(Duration.millis(100), cell);
+        pulse.setToX(1.2);
+        pulse.setToY(1.2);
         pulse.setAutoReverse(true);
         pulse.setCycleCount(2);
-        pulse.setInterpolator(AnimationUtils.EASE_IN_OUT_CUBIC);
         pulse.play();
     }
 
@@ -659,43 +569,32 @@ public class SimulationView extends BorderPane {
             if (engine == null) return;
             
             SimulationStats stats = engine.getStats();
-            
-            // Animate stat updates with subtle scale effect
             animateStatLabel(turnLabel, "Turno: " + stats.getTurn());
             animateStatLabel(predatorLabel, "🐺 Depredadores: " + stats.getPredatorCount());
             animateStatLabel(preyLabel, "🐰 Presas: " + stats.getPreyCount());
             animateStatLabel(thirdSpeciesLabel, "🦎 Tercer Especie: " + stats.getThirdSpeciesCount());
             animateStatLabel(mutatedLabel, "🧬 Mutados: " + stats.getMutatedCount());
             
-            // Update progress bar with smooth animation
             double progress = (double) stats.getTurn() / config.getMaxTurns();
             animateProgressBar(progress);
         });
     }
     
-    /**
-     * Animate stat label update with subtle pulse
-     */
     private void animateStatLabel(Label label, String newText) {
         if (!label.getText().equals(newText)) {
             label.setText(newText);
-            ScaleTransition pulse = new ScaleTransition(Duration.millis(100), label);
-            pulse.setFromX(1.0);
-            pulse.setFromY(1.0);
-            pulse.setToX(1.08);
-            pulse.setToY(1.08);
+            ScaleTransition pulse = new ScaleTransition(Duration.millis(80), label);
+            pulse.setToX(1.05);
+            pulse.setToY(1.05);
             pulse.setAutoReverse(true);
             pulse.setCycleCount(2);
             pulse.play();
         }
     }
     
-    /**
-     * Animate progress bar smoothly
-     */
     private void animateProgressBar(double targetProgress) {
         Timeline timeline = new Timeline(
-            new KeyFrame(Duration.millis(200),
+            new KeyFrame(Duration.millis(150),
                 new KeyValue(progressBar.progressProperty(), targetProgress, AnimationUtils.EASE_OUT_CUBIC))
         );
         timeline.play();
@@ -706,64 +605,29 @@ public class SimulationView extends BorderPane {
             SimulationStats stats = engine.getStats();
             String result = stats.getWinner();
             
-            // Update status with appropriate styling
             statusLabel.setText("🏆 Simulación terminada: " + result);
-            statusLabel.getStyleClass().removeAll("status-label-success", "status-label-warning");
-            
             startButton.setDisable(false);
             pauseButton.setDisable(true);
             scenarioComboBox.setDisable(false);
             thirdSpeciesCheckBox.setDisable(false);
             mutationsCheckBox.setDisable(false);
 
-            // Stop all mutation animations
-            mutationAnimations.values().forEach(Timeline::stop);
-            mutationAnimations.clear();
-
-            // Generate PDF report and send via email
+            stopMutationAnimations();
             generateAndSendReport(stats);
 
-            // Show end dialog with animation
-            showEndDialog(stats, result);
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Simulación Completada");
+            alert.setHeaderText("🏆 Resultado Final");
+            alert.setContentText(String.format(
+                "Turno final: %d\nDepredadores: %d\nPresas: %d\nTercer Especie: %d\nMutados: %d\n\nResultado: %s",
+                stats.getTurn(), stats.getPredatorCount(), stats.getPreyCount(),
+                stats.getThirdSpeciesCount(), stats.getMutatedCount(), result
+            ));
+            alert.showAndWait();
         });
     }
-    
-    /**
-     * Show simulation end dialog with animation
-     */
-    private void showEndDialog(SimulationStats stats, String result) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Simulación Completada");
-        alert.setHeaderText("🏆 Resultado Final");
-        alert.setContentText(String.format(
-            "Turno final: %d\n" +
-            "Depredadores: %d\n" +
-            "Presas: %d\n" +
-            "Tercer Especie: %d\n" +
-            "Criaturas mutadas: %d\n\n" +
-            "Resultado: %s",
-            stats.getTurn(),
-            stats.getPredatorCount(),
-            stats.getPreyCount(),
-            stats.getThirdSpeciesCount(),
-            stats.getMutatedCount(),
-            result
-        ));
-        
-        // Style the dialog
-        alert.getDialogPane().getStylesheets().add(
-            getClass().getResource("/css/styles.css").toExternalForm()
-        );
-        
-        alert.showAndWait();
-    }
 
-    /**
-     * Generate PDF report and attempt to send it via email.
-     * Shows non-blocking notification on success or failure.
-     */
     private void generateAndSendReport(SimulationStats stats) {
-        // Generate PDF report
         String reportFilename = PDFReportGenerator.getDefaultFilename();
         Path reportsDir = Paths.get("reports");
         
@@ -773,105 +637,53 @@ public class SimulationView extends BorderPane {
             }
             
             String reportPath = reportsDir.resolve(reportFilename).toString();
+            int extinctionTurn = (stats.getPredatorCount() == 0 || stats.getPreyCount() == 0) ? stats.getTurn() : -1;
             
-            // Find extinction turn if applicable
-            int extinctionTurn = -1;
-            if (stats.getPredatorCount() == 0 || stats.getPreyCount() == 0) {
-                extinctionTurn = stats.getTurn();
-            }
-            
-            PDFReportGenerator.generateSimpleReport(
-                reportPath,
-                stats.getTurn(),
-                stats,
-                DEFAULT_GRID_SIZE,
-                extinctionTurn
-            );
+            PDFReportGenerator.generateSimpleReport(reportPath, stats.getTurn(), stats, DEFAULT_GRID_SIZE, extinctionTurn);
             
             File reportFile = new File(reportPath);
             LOGGER.info("PDF report generated: " + reportPath);
             
-            // Check if user is logged in and has email
             if (Session.isLoggedIn()) {
                 var currentUser = Session.getUser();
                 if (currentUser != null && currentUser.getEmail() != null && !currentUser.getEmail().isEmpty()) {
                     String userEmail = currentUser.getEmail();
                     String subject = "Eco Simulator - Simulation Report";
-                    String body = "Hello " + currentUser.getName() + ",\n\n" +
-                                 "Attached is your simulation report.\n\n" +
-                                 "Simulation Results:\n" +
-                                 "- Final Turn: " + stats.getTurn() + "\n" +
-                                 "- Predators: " + stats.getPredatorCount() + "\n" +
-                                 "- Prey: " + stats.getPreyCount() + "\n" +
-                             "- Third Species: " + stats.getThirdSpeciesCount() + "\n" +
-                             "- Result: " + stats.getWinner() + "\n\n" +
-                             "Best regards,\nEco Simulator";
-                
-                // Attempt to send email
-                boolean emailSent = emailService.sendReport(userEmail, reportFile, subject, body);
-                
-                // Show non-blocking notification
-                showEmailNotification(emailSent, userEmail, reportPath);
+                    String body = "Hello " + currentUser.getName() + ",\n\nAttached is your simulation report.\n\nBest regards,\nEco Simulator";
+                    
+                    boolean emailSent = emailService.sendReport(userEmail, reportFile, subject, body);
+                    showEmailNotification(emailSent, userEmail, reportPath);
                 } else {
-                    LOGGER.info("User not logged in or no email configured. Report saved locally only.");
-                    showNotification("📄 Report Saved", 
-                        "Report saved to: " + reportPath + "\n" +
-                        "Login and configure email to send reports automatically.",
-                        Alert.AlertType.INFORMATION);
+                    showNotification("📄 Report Saved", "Report saved to: " + reportPath, Alert.AlertType.INFORMATION);
                 }
             } else {
-                LOGGER.info("User not logged in. Report saved locally only.");
-                showNotification("📄 Report Saved", 
-                    "Report saved to: " + reportPath + "\n" +
-                    "Login to enable email sending.",
-                    Alert.AlertType.INFORMATION);
+                showNotification("📄 Report Saved", "Report saved to: " + reportPath, Alert.AlertType.INFORMATION);
             }
             
         } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Failed to generate PDF report", e);
-            showNotification("⚠️ Report Generation Failed", 
-                "Could not generate PDF report: " + e.getMessage(),
-                Alert.AlertType.WARNING);
+            showNotification("⚠️ Report Generation Failed", "Could not generate PDF report: " + e.getMessage(), Alert.AlertType.WARNING);
         }
     }
 
-    /**
-     * Show notification about email send status.
-     */
     private void showEmailNotification(boolean success, String email, String reportPath) {
         if (success) {
-            showNotification("📧 Email Sent", 
-                "Report sent to: " + email + "\n" +
-                "Local copy: " + reportPath,
-                Alert.AlertType.INFORMATION);
+            showNotification("📧 Email Sent", "Report sent to: " + email + "\nLocal copy: " + reportPath, Alert.AlertType.INFORMATION);
         } else {
-            String fallbackDir = EmailService.getFallbackDirectory();
-            showNotification("📧 Email Failed", 
-                "Could not send email to: " + email + "\n" +
-                "Report saved locally:\n" +
-                "- Original: " + reportPath + "\n" +
-                "- Fallback: " + fallbackDir + "/\n\n" +
-                "Check SMTP settings or try again later.",
-                Alert.AlertType.WARNING);
+            showNotification("📧 Email Failed", "Could not send email. Report saved locally.", Alert.AlertType.WARNING);
         }
     }
 
-    /**
-     * Show a non-blocking notification alert.
-     */
     private void showNotification(String title, String message, Alert.AlertType type) {
         Platform.runLater(() -> {
             Alert alert = new Alert(type);
             alert.setTitle(title);
             alert.setHeaderText(null);
             alert.setContentText(message);
-            alert.show(); // Non-blocking
+            alert.show();
         });
     }
 
-    /**
-     * Open SMTP settings dialog.
-     */
     private void openSmtpSettings() {
         Stage stage = (Stage) getScene().getWindow();
         SMTPSettingsController.showDialog(stage, emailService);
@@ -880,85 +692,60 @@ public class SimulationView extends BorderPane {
     private void applyStyles() {
         getStyleClass().add("main-view");
         
-        // Apply premium drop shadow to the grid
         DropShadow dropShadow = new DropShadow();
         dropShadow.setRadius(15);
-        dropShadow.setOffsetX(0);
         dropShadow.setOffsetY(8);
         dropShadow.setSpread(0.1);
         dropShadow.setColor(Color.rgb(27, 94, 32, 0.4));
         gridPane.setEffect(dropShadow);
     }
     
-    /**
-     * Play entrance animations for all UI panels
-     */
     private void playEntranceAnimations() {
-        // Stagger the entrance of different panels
-        
-        // Control panel slides in from top
         controlPanel.setOpacity(0);
         controlPanel.setTranslateY(-30);
         
         PauseTransition delay1 = new PauseTransition(Duration.millis(100));
-        delay1.setOnFinished(e -> {
-            ParallelTransition entrance = AnimationUtils.slideUpAndFadeIn(controlPanel, AnimationUtils.DURATION_NORMAL);
-            entrance.play();
-        });
+        delay1.setOnFinished(e -> AnimationUtils.slideUpAndFadeIn(controlPanel, AnimationUtils.DURATION_NORMAL).play());
         delay1.play();
         
-        // Stats panel slides in from right
         statsPanel.setOpacity(0);
         statsPanel.setTranslateX(50);
         
         PauseTransition delay2 = new PauseTransition(Duration.millis(200));
         delay2.setOnFinished(e -> {
             FadeTransition fade = new FadeTransition(AnimationUtils.DURATION_NORMAL, statsPanel);
-            fade.setFromValue(0);
             fade.setToValue(1);
-            
             TranslateTransition slide = new TranslateTransition(AnimationUtils.DURATION_NORMAL, statsPanel);
-            slide.setFromX(50);
             slide.setToX(0);
             slide.setInterpolator(AnimationUtils.EASE_OUT_CUBIC);
-            
             new ParallelTransition(fade, slide).play();
         });
         delay2.play();
         
-        // Status panel slides in from bottom
         statusPanel.setOpacity(0);
         statusPanel.setTranslateY(30);
         
         PauseTransition delay3 = new PauseTransition(Duration.millis(300));
         delay3.setOnFinished(e -> {
             FadeTransition fade = new FadeTransition(AnimationUtils.DURATION_NORMAL, statusPanel);
-            fade.setFromValue(0);
             fade.setToValue(1);
-            
             TranslateTransition slide = new TranslateTransition(AnimationUtils.DURATION_NORMAL, statusPanel);
-            slide.setFromY(30);
             slide.setToY(0);
             slide.setInterpolator(AnimationUtils.EASE_OUT_CUBIC);
-            
             new ParallelTransition(fade, slide).play();
         });
         delay3.play();
         
-        // Grid cells cascade entrance animation
         PauseTransition gridDelay = new PauseTransition(Duration.millis(350));
         gridDelay.setOnFinished(e -> playGridEntranceAnimation());
         gridDelay.play();
     }
     
-    /**
-     * Play a cascading entrance animation for grid cells
-     */
     private void playGridEntranceAnimation() {
         for (int i = 0; i < DEFAULT_GRID_SIZE; i++) {
             for (int j = 0; j < DEFAULT_GRID_SIZE; j++) {
                 final Rectangle cell = gridCells[i][j];
-                final int delay = (i + j) * 8; // Diagonal wave effect
+                final int delay = (i + j) * 6;
                 
                 cell.setOpacity(0);
                 cell.setScaleX(0.5);
@@ -966,14 +753,12 @@ public class SimulationView extends BorderPane {
                 
                 PauseTransition pause = new PauseTransition(Duration.millis(delay));
                 pause.setOnFinished(event -> {
-                    FadeTransition fade = new FadeTransition(Duration.millis(150), cell);
+                    FadeTransition fade = new FadeTransition(Duration.millis(100), cell);
                     fade.setToValue(1.0);
-                    
-                    ScaleTransition scale = new ScaleTransition(Duration.millis(150), cell);
+                    ScaleTransition scale = new ScaleTransition(Duration.millis(100), cell);
                     scale.setToX(1.0);
                     scale.setToY(1.0);
                     scale.setInterpolator(AnimationUtils.EASE_OUT_CUBIC);
-                    
                     new ParallelTransition(fade, scale).play();
                 });
                 pause.play();
@@ -981,9 +766,6 @@ public class SimulationView extends BorderPane {
         }
     }
 
-    /**
-     * Get the email service for external configuration
-     */
     public EmailService getEmailService() {
         return emailService;
     }
