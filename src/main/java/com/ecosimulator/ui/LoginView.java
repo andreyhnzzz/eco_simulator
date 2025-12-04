@@ -4,30 +4,37 @@ import com.ecosimulator.auth.Session;
 import com.ecosimulator.auth.User;
 import com.ecosimulator.persistence.UserDAO;
 
+import javafx.animation.*;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 import java.time.LocalDate;
 import java.time.Period;
 
 /**
  * Login and Registration view for user authentication
- * Supports both login and new user registration with age validation
+ * Features glassmorphism styling, smooth animations, and modern UI/UX
  */
-public class LoginView extends VBox {
+public class LoginView extends StackPane {
     private final UserDAO userDAO;
     private final Stage primaryStage;
     private final Runnable onLoginSuccess;
 
+    // Main content container
+    private VBox mainContent;
+    
     // Login form fields
     private TextField loginIdField;
     private PasswordField loginPasswordField;
     private Label loginErrorLabel;
+    private Button loginButton;
 
     // Registration form fields
     private TextField regIdField;
@@ -37,6 +44,7 @@ public class LoginView extends VBox {
     private TextField regEmailField;
     private DatePicker regBirthDatePicker;
     private Label regErrorLabel;
+    private Button registerButton;
 
     // Tabs
     private TabPane tabPane;
@@ -53,35 +61,48 @@ public class LoginView extends VBox {
 
         initializeUI();
         applyStyles();
+        playEntranceAnimation();
     }
 
     private void initializeUI() {
-        setAlignment(Pos.CENTER);
-        setPadding(new Insets(40));
-        setSpacing(20);
+        // Create main content container
+        mainContent = new VBox(24);
+        mainContent.setAlignment(Pos.CENTER);
+        mainContent.setPadding(new Insets(40));
+        mainContent.setMaxWidth(450);
+        mainContent.getStyleClass().addAll("glass-panel", "login-container");
 
-        // Title
+        // Title with enhanced styling
         Label titleLabel = new Label("🌿 Eco Simulator 🌿");
         titleLabel.getStyleClass().add("title-label");
 
-        Label subtitleLabel = new Label("Simulador Ecológico - UTN 2025");
-        subtitleLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #666;");
+        Label subtitleLabel = new Label("Simulador Ecológico Interactivo");
+        subtitleLabel.getStyleClass().add("subtitle-label");
+        
+        // Version/year label
+        Label versionLabel = new Label("UTN 2025");
+        versionLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #78909C;");
 
-        // Tab pane for login/register
+        // Tab pane for login/register with enhanced styling
         tabPane = new TabPane();
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         tabPane.setMaxWidth(400);
+        tabPane.getStyleClass().add("login-tabs");
 
         Tab loginTab = new Tab("Iniciar Sesión", createLoginForm());
         Tab registerTab = new Tab("Registrarse", createRegisterForm());
 
         tabPane.getTabs().addAll(loginTab, registerTab);
 
-        getChildren().addAll(titleLabel, subtitleLabel, tabPane);
+        mainContent.getChildren().addAll(titleLabel, subtitleLabel, versionLabel, tabPane);
+        
+        // Center the main content
+        setAlignment(Pos.CENTER);
+        getChildren().add(mainContent);
     }
 
     private VBox createLoginForm() {
-        VBox form = new VBox(15);
+        VBox form = new VBox(18);
         form.setPadding(new Insets(30));
         form.setAlignment(Pos.CENTER);
 
@@ -92,6 +113,9 @@ public class LoginView extends VBox {
         loginIdField.setPromptText("Ingrese su cédula");
         loginIdField.setMaxWidth(300);
         loginIdField.getStyleClass().add("text-field-custom");
+        
+        // Add focus animation
+        addInputFocusAnimation(loginIdField);
 
         Label passwordLabel = new Label("Contraseña:");
         passwordLabel.getStyleClass().add("control-label");
@@ -100,14 +124,27 @@ public class LoginView extends VBox {
         loginPasswordField.setPromptText("Ingrese su contraseña");
         loginPasswordField.setMaxWidth(300);
         loginPasswordField.getStyleClass().add("text-field-custom");
+        
+        // Add focus animation
+        addInputFocusAnimation(loginPasswordField);
 
         loginErrorLabel = new Label();
-        loginErrorLabel.setStyle("-fx-text-fill: #D32F2F; -fx-font-size: 12px;");
+        loginErrorLabel.getStyleClass().add("error-label");
+        loginErrorLabel.setStyle("-fx-text-fill: #EF5350; -fx-font-size: 12px; -fx-font-weight: 600;");
         loginErrorLabel.setVisible(false);
+        loginErrorLabel.setWrapText(true);
+        loginErrorLabel.setMaxWidth(300);
 
-        Button loginButton = new Button("Ingresar");
+        loginButton = new Button("🔓 Ingresar");
         loginButton.getStyleClass().addAll("action-button", "start-button");
-        loginButton.setOnAction(e -> handleLogin());
+        loginButton.setMaxWidth(200);
+        loginButton.setOnAction(e -> {
+            AnimationUtils.playButtonClickAnimation(loginButton);
+            handleLogin();
+        });
+        
+        // Apply hover animation
+        AnimationUtils.applyButtonHoverAnimation(loginButton);
 
         // Allow Enter key to submit
         loginPasswordField.setOnAction(e -> handleLogin());
@@ -123,7 +160,7 @@ public class LoginView extends VBox {
     }
 
     private VBox createRegisterForm() {
-        VBox form = new VBox(12);
+        VBox form = new VBox(14);
         form.setPadding(new Insets(20));
         form.setAlignment(Pos.CENTER);
 
@@ -133,6 +170,8 @@ public class LoginView extends VBox {
         regIdField = new TextField();
         regIdField.setPromptText("Ingrese su cédula");
         regIdField.setMaxWidth(300);
+        regIdField.getStyleClass().add("text-field-custom");
+        addInputFocusAnimation(regIdField);
 
         // Name
         Label nameLabel = new Label("Nombre completo:");
@@ -140,6 +179,8 @@ public class LoginView extends VBox {
         regNameField = new TextField();
         regNameField.setPromptText("Ingrese su nombre");
         regNameField.setMaxWidth(300);
+        regNameField.getStyleClass().add("text-field-custom");
+        addInputFocusAnimation(regNameField);
 
         // Email
         Label emailLabel = new Label("Correo electrónico:");
@@ -147,6 +188,8 @@ public class LoginView extends VBox {
         regEmailField = new TextField();
         regEmailField.setPromptText("correo@ejemplo.com");
         regEmailField.setMaxWidth(300);
+        regEmailField.getStyleClass().add("text-field-custom");
+        addInputFocusAnimation(regEmailField);
 
         // Birth date
         Label birthLabel = new Label("Fecha de nacimiento:");
@@ -162,6 +205,8 @@ public class LoginView extends VBox {
         regPasswordField = new PasswordField();
         regPasswordField.setPromptText("Mínimo 6 caracteres");
         regPasswordField.setMaxWidth(300);
+        regPasswordField.getStyleClass().add("text-field-custom");
+        addInputFocusAnimation(regPasswordField);
 
         // Confirm password
         Label confirmLabel = new Label("Confirmar contraseña:");
@@ -169,16 +214,25 @@ public class LoginView extends VBox {
         regConfirmPasswordField = new PasswordField();
         regConfirmPasswordField.setPromptText("Repita la contraseña");
         regConfirmPasswordField.setMaxWidth(300);
+        regConfirmPasswordField.getStyleClass().add("text-field-custom");
+        addInputFocusAnimation(regConfirmPasswordField);
 
         regErrorLabel = new Label();
-        regErrorLabel.setStyle("-fx-text-fill: #D32F2F; -fx-font-size: 12px;");
+        regErrorLabel.setStyle("-fx-text-fill: #EF5350; -fx-font-size: 12px; -fx-font-weight: 600;");
         regErrorLabel.setWrapText(true);
         regErrorLabel.setMaxWidth(300);
         regErrorLabel.setVisible(false);
 
-        Button registerButton = new Button("Registrarse");
+        registerButton = new Button("✨ Registrarse");
         registerButton.getStyleClass().addAll("action-button", "start-button");
-        registerButton.setOnAction(e -> handleRegister());
+        registerButton.setMaxWidth(200);
+        registerButton.setOnAction(e -> {
+            AnimationUtils.playButtonClickAnimation(registerButton);
+            handleRegister();
+        });
+        
+        // Apply hover animation
+        AnimationUtils.applyButtonHoverAnimation(registerButton);
 
         form.getChildren().addAll(
             idLabel, regIdField,
@@ -192,6 +246,27 @@ public class LoginView extends VBox {
         );
 
         return form;
+    }
+    
+    /**
+     * Add focus animation to input fields
+     */
+    private void addInputFocusAnimation(TextField field) {
+        field.focusedProperty().addListener((obs, wasFocused, isFocused) -> {
+            if (isFocused) {
+                ScaleTransition scale = new ScaleTransition(Duration.millis(150), field);
+                scale.setToX(1.02);
+                scale.setToY(1.02);
+                scale.setInterpolator(AnimationUtils.EASE_OUT_CUBIC);
+                scale.play();
+            } else {
+                ScaleTransition scale = new ScaleTransition(Duration.millis(150), field);
+                scale.setToX(1.0);
+                scale.setToY(1.0);
+                scale.setInterpolator(AnimationUtils.EASE_OUT_CUBIC);
+                scale.play();
+            }
+        });
     }
 
     private void handleLogin() {
@@ -218,9 +293,10 @@ public class LoginView extends VBox {
         User user = userDAO.authenticate(id, password);
         if (user != null) {
             Session.setUser(user);
-            onLoginSuccess.run();
+            playSuccessAnimation(() -> onLoginSuccess.run());
         } else {
             showLoginError("Cédula o contraseña incorrectos");
+            AnimationUtils.playShakeAnimation(loginIdField);
         }
     }
 
@@ -294,37 +370,121 @@ public class LoginView extends VBox {
     }
 
     private void showLoginError(String message) {
-        loginErrorLabel.setText(message);
+        loginErrorLabel.setText("⚠️ " + message);
         loginErrorLabel.setVisible(true);
+        
+        // Fade in the error label
+        FadeTransition fade = new FadeTransition(Duration.millis(200), loginErrorLabel);
+        fade.setFromValue(0);
+        fade.setToValue(1);
+        fade.play();
     }
 
     private void showRegisterError(String message) {
-        regErrorLabel.setText(message);
+        regErrorLabel.setText("⚠️ " + message);
         regErrorLabel.setVisible(true);
+        
+        // Fade in the error label
+        FadeTransition fade = new FadeTransition(Duration.millis(200), regErrorLabel);
+        fade.setFromValue(0);
+        fade.setToValue(1);
+        fade.play();
     }
 
     private void showSuccessAndSwitchToLogin() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Registro Exitoso");
-        alert.setHeaderText("¡Bienvenido!");
+        alert.setHeaderText("✨ ¡Bienvenido!");
         alert.setContentText("Su cuenta ha sido creada exitosamente. Por favor inicie sesión.");
+        
+        // Apply styles to dialog
+        try {
+            alert.getDialogPane().getStylesheets().add(
+                getClass().getResource("/css/styles.css").toExternalForm()
+            );
+        } catch (Exception e) {
+            // Ignore if styles cannot be loaded
+        }
+        
         alert.showAndWait();
 
-        // Clear registration form
+        // Clear registration form with animation
+        clearRegistrationForm();
+
+        // Switch to login tab with animation
+        tabPane.getSelectionModel().select(0);
+    }
+    
+    /**
+     * Clear registration form fields
+     */
+    private void clearRegistrationForm() {
         regIdField.clear();
         regNameField.clear();
         regEmailField.clear();
         regBirthDatePicker.setValue(null);
         regPasswordField.clear();
         regConfirmPasswordField.clear();
-
-        // Switch to login tab
-        tabPane.getSelectionModel().select(0);
+        regErrorLabel.setVisible(false);
+    }
+    
+    /**
+     * Play success animation before transitioning
+     */
+    private void playSuccessAnimation(Runnable onComplete) {
+        // Scale up and fade out animation
+        ScaleTransition scale = new ScaleTransition(Duration.millis(300), mainContent);
+        scale.setToX(0.95);
+        scale.setToY(0.95);
+        scale.setInterpolator(AnimationUtils.EASE_IN_OUT_CUBIC);
+        
+        FadeTransition fade = new FadeTransition(Duration.millis(300), mainContent);
+        fade.setToValue(0);
+        
+        ParallelTransition exit = new ParallelTransition(scale, fade);
+        exit.setOnFinished(e -> onComplete.run());
+        exit.play();
     }
 
     private void applyStyles() {
-        getStyleClass().add("main-view");
-        setStyle("-fx-background-color: linear-gradient(to bottom right, #E8F5E9, #C8E6C9);");
+        getStyleClass().add("login-view");
+        setStyle("-fx-background-color: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #66a6ff 100%);");
+        
+        // Apply shadow to main content panel
+        DropShadow shadow = new DropShadow();
+        shadow.setRadius(30);
+        shadow.setOffsetY(15);
+        shadow.setSpread(0.05);
+        shadow.setColor(Color.rgb(0, 0, 0, 0.25));
+        mainContent.setEffect(shadow);
+    }
+    
+    /**
+     * Play entrance animation for the login view
+     */
+    private void playEntranceAnimation() {
+        mainContent.setOpacity(0);
+        mainContent.setScaleX(0.9);
+        mainContent.setScaleY(0.9);
+        mainContent.setTranslateY(30);
+        
+        PauseTransition delay = new PauseTransition(Duration.millis(100));
+        delay.setOnFinished(e -> {
+            FadeTransition fade = new FadeTransition(Duration.millis(400), mainContent);
+            fade.setToValue(1);
+            
+            ScaleTransition scale = new ScaleTransition(Duration.millis(400), mainContent);
+            scale.setToX(1);
+            scale.setToY(1);
+            scale.setInterpolator(AnimationUtils.EASE_OUT_CUBIC);
+            
+            TranslateTransition slide = new TranslateTransition(Duration.millis(400), mainContent);
+            slide.setToY(0);
+            slide.setInterpolator(AnimationUtils.EASE_OUT_CUBIC);
+            
+            new ParallelTransition(fade, scale, slide).play();
+        });
+        delay.play();
     }
 
     /**
@@ -332,7 +492,7 @@ public class LoginView extends VBox {
      * @return the login scene
      */
     public Scene createScene() {
-        Scene scene = new Scene(this, 500, 650);
+        Scene scene = new Scene(this, 500, 700);
         try {
             String cssPath = getClass().getResource("/css/styles.css").toExternalForm();
             scene.getStylesheets().add(cssPath);
