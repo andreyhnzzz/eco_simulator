@@ -325,9 +325,6 @@ public class SimulationView extends BorderPane {
                 cellContainer.setMaxSize(CELL_SIZE, CELL_SIZE);
                 gridCellContainers[i][j] = cellContainer;
                 
-                // Initialize icon slot as null (no icon for empty cells)
-                gridCellIcons[i][j] = null;
-                
                 gridPane.add(cellContainer, j, i);
             }
         }
@@ -572,12 +569,15 @@ public class SimulationView extends BorderPane {
         Platform.runLater(() -> {
             if (engine == null) return;
             
+            // Cache theme mode to avoid repeated calls in the loop
+            boolean isDarkMode = ThemeManager.isDarkMode();
+            
             CellType[][] grid = engine.getGrid();
             for (int i = 0; i < grid.length; i++) {
                 for (int j = 0; j < grid[i].length; j++) {
                     CellType cellType = grid[i][j];
                     CellType prevType = previousGrid[i][j];
-                    String colorStr = ThemeManager.isDarkMode() ? 
+                    String colorStr = isDarkMode ? 
                         getDarkModeColor(cellType) : cellType.getColor();
                     Color color = Color.web(colorStr);
                     Rectangle cell = gridCells[i][j];
@@ -596,8 +596,12 @@ public class SimulationView extends BorderPane {
                             playReproductionEffect(cell, color);
                         }
                         
-                        // Update icon when cell type changes
-                        updateCellIcon(i, j, cellType, container);
+                        // Update icon when cell type changes (only if icon type differs)
+                        String prevIconName = getIconNameForCellType(prevType);
+                        String newIconName = getIconNameForCellType(cellType);
+                        if (!java.util.Objects.equals(prevIconName, newIconName)) {
+                            updateCellIcon(i, j, cellType, container);
+                        }
                     } else {
                         cell.setFill(color);
                     }
