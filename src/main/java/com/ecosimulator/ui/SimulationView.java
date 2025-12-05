@@ -15,6 +15,7 @@ import javafx.scene.effect.Glow;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.image.ImageView;
 import javafx.animation.*;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -48,6 +49,7 @@ public class SimulationView extends BorderPane {
     private Button pauseButton;
     private Button resetButton;
     private Button settingsButton;
+    private Button themeToggleButton;
     private Label turnLabel;
     private Label predatorLabel;
     private Label preyLabel;
@@ -76,6 +78,9 @@ public class SimulationView extends BorderPane {
         this.config = new SimulationConfig().withGridSize(DEFAULT_GRID_SIZE);
         this.emailService = new EmailService();
         this.previousGrid = new CellType[DEFAULT_GRID_SIZE][DEFAULT_GRID_SIZE];
+        
+        // Preload icons
+        IconManager.preloadIcons();
         
         // Initialize previous grid to EMPTY
         for (int i = 0; i < DEFAULT_GRID_SIZE; i++) {
@@ -210,8 +215,70 @@ public class SimulationView extends BorderPane {
         
         buttonBox.getChildren().addAll(startButton, pauseButton, resetButton, settingsButton);
 
-        panel.getChildren().addAll(titleLabel, subtitleLabel, scenarioBox, extensionsBox, speedBox, buttonBox);
+        // Theme toggle button
+        themeToggleButton = new Button(ThemeManager.getThemeToggleText());
+        themeToggleButton.getStyleClass().add("theme-toggle-button");
+        themeToggleButton.setOnAction(e -> {
+            AnimationUtils.playButtonClickAnimation(themeToggleButton);
+            toggleTheme();
+        });
+        AnimationUtils.applyButtonHoverAnimation(themeToggleButton);
+
+        // Top row with title and theme toggle
+        HBox topRow = new HBox();
+        topRow.setAlignment(Pos.CENTER);
+        Region spacer1 = new Region();
+        HBox.setHgrow(spacer1, Priority.ALWAYS);
+        Region spacer2 = new Region();
+        HBox.setHgrow(spacer2, Priority.ALWAYS);
+        
+        VBox titleBox = new VBox(4);
+        titleBox.setAlignment(Pos.CENTER);
+        titleBox.getChildren().addAll(titleLabel, subtitleLabel);
+        
+        topRow.getChildren().addAll(spacer1, titleBox, spacer2, themeToggleButton);
+
+        panel.getChildren().addAll(topRow, scenarioBox, extensionsBox, speedBox, buttonBox);
         return panel;
+    }
+    
+    private void toggleTheme() {
+        if (getScene() != null) {
+            ThemeManager.playEnhancedThemeTransition(this, () -> {
+                ThemeManager.toggleTheme(getScene(), null);
+                themeToggleButton.setText(ThemeManager.getThemeToggleText());
+                updateGridColors();
+            });
+        }
+    }
+    
+    private void updateGridColors() {
+        // Update grid cell colors based on current theme
+        if (engine != null) {
+            CellType[][] grid = engine.getGrid();
+            for (int i = 0; i < grid.length; i++) {
+                for (int j = 0; j < grid[i].length; j++) {
+                    CellType cellType = grid[i][j];
+                    String colorStr = ThemeManager.isDarkMode() ? 
+                        getDarkModeColor(cellType) : cellType.getColor();
+                    gridCells[i][j].setFill(Color.web(colorStr));
+                }
+            }
+        }
+    }
+    
+    private String getDarkModeColor(CellType cellType) {
+        switch (cellType) {
+            case PREDATOR:
+                return "#FF5252";
+            case PREY:
+                return "#448AFF";
+            case THIRD_SPECIES:
+                return "#FFAB40";
+            case EMPTY:
+            default:
+                return "#1B263B";
+        }
     }
     
     private Button createAnimatedButton(String text, String styleClass) {
@@ -291,10 +358,11 @@ public class SimulationView extends BorderPane {
 
         VBox legendBox = new VBox(10);
         legendBox.getChildren().addAll(
-            createLegendItem("🐺 Depredador", "#D32F2F"),
-            createLegendItem("🐰 Presa", "#1976D2"),
-            createLegendItem("🦎 Tercer Especie", "#FF9800"),
-            createLegendItem("🌿 Vacío", "#2E7D32")
+            createLegendItemWithIcon(IconManager.PREDATOR, "Depredador", "#D32F2F"),
+            createLegendItemWithIcon(IconManager.PREY, "Presa", "#1976D2"),
+            createLegendItemWithIcon(IconManager.SCAVENGER, "Tercer Especie", "#FF9800"),
+            createLegendItemWithIcon(IconManager.TERRAIN, "Vacío", "#2E7D32"),
+            createLegendItemWithIcon(IconManager.MUTATION, "Mutación", "#9C27B0")
         );
 
         panel.getChildren().addAll(
@@ -306,27 +374,36 @@ public class SimulationView extends BorderPane {
         return panel;
     }
 
-    private HBox createLegendItem(String text, String color) {
+    private HBox createLegendItemWithIcon(String iconName, String text, String color) {
         HBox item = new HBox(10);
         item.setAlignment(Pos.CENTER_LEFT);
         
-        Rectangle colorBox = new Rectangle(18, 18);
-        colorBox.setFill(Color.web(color));
-        colorBox.setArcWidth(4);
-        colorBox.setArcHeight(4);
-        colorBox.setStroke(Color.web(color).darker());
-        colorBox.setStrokeWidth(1);
-        
-        DropShadow shadow = new DropShadow();
-        shadow.setRadius(3);
-        shadow.setOffsetY(1);
-        shadow.setColor(Color.rgb(0, 0, 0, 0.2));
-        colorBox.setEffect(shadow);
+        // Try to get icon, fallback to colored rectangle
+        ImageView icon = IconManager.getIconView(iconName, 20);
+        if (icon != null) {
+            item.getChildren().add(icon);
+        } else {
+            Rectangle colorBox = new Rectangle(18, 18);
+            colorBox.setFill(Color.web(color));
+            colorBox.setArcWidth(4);
+            colorBox.setArcHeight(4);
+            colorBox.setStroke(Color.web(color).darker());
+            colorBox.setStrokeWidth(1);
+            
+            DropShadow shadow = new DropShadow();
+            shadow.setRadius(3);
+            shadow.setOffsetY(1);
+            shadow.setColor(Color.rgb(0, 0, 0, 0.2));
+            colorBox.setEffect(shadow);
+            
+            item.getChildren().add(colorBox);
+        }
         
         Label label = new Label(text);
         label.getStyleClass().add("legend-label");
+        label.setStyle("-fx-text-fill: " + color + ";");
         
-        item.getChildren().addAll(colorBox, label);
+        item.getChildren().add(label);
         return item;
     }
 
@@ -613,17 +690,18 @@ public class SimulationView extends BorderPane {
             mutationsCheckBox.setDisable(false);
 
             stopMutationAnimations();
+            
+            // Calculate extinction turn
+            int extinctionTurn = (stats.getPredatorCount() == 0 || stats.getPreyCount() == 0) ? stats.getTurn() : -1;
+            
+            // Show premium results screen
+            if (getScene() != null && getScene().getWindow() instanceof Stage) {
+                Stage owner = (Stage) getScene().getWindow();
+                ResultsScreen.showResultsDialog(owner, stats, DEFAULT_GRID_SIZE, extinctionTurn, emailService);
+            }
+            
+            // Also generate and send report in background
             generateAndSendReport(stats);
-
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("Simulación Completada");
-            alert.setHeaderText("🏆 Resultado Final");
-            alert.setContentText(String.format(
-                "Turno final: %d\nDepredadores: %d\nPresas: %d\nTercer Especie: %d\nMutados: %d\n\nResultado: %s",
-                stats.getTurn(), stats.getPredatorCount(), stats.getPreyCount(),
-                stats.getThirdSpeciesCount(), stats.getMutatedCount(), result
-            ));
-            alert.showAndWait();
         });
     }
 

@@ -946,3 +946,134 @@
     -fx-translate-y: -4px;
     -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.15), 20, 0, 0, 12);
 }
+
+/* ===========================
+   RESULTS SCREEN STYLES (LIGHT)
+   =========================== */
+
+.results-container {
+    -fx-background-color: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 25%, #A5D6A7 50%, #81C784 75%, #66BB6A 100%);
+}
+
+.results-scroll {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+
+.results-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.results-card {
+    -fx-background-color: rgba(255, 255, 255, 0.9);
+    -fx-background-radius: 24px;
+    -fx-border-color: rgba(76, 175, 80, 0.2);
+    -fx-border-width: 1px;
+    -fx-border-radius: 24px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.15), 25, 0, 0, 12);
+}
+
+.results-title {
+    -fx-font-size: 36px;
+    -fx-font-weight: 800;
+    -fx-text-fill: linear-gradient(to right, #1B5E20, #2E7D32);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 6, 0, 0, 0);
+}
+
+.results-stat-card {
+    -fx-background-color: rgba(255, 255, 255, 0.95);
+    -fx-background-radius: 16px;
+    -fx-border-color: rgba(76, 175, 80, 0.15);
+    -fx-border-radius: 16px;
+    -fx-border-width: 1px;
+    -fx-padding: 20px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 10, 0, 0, 5);
+}
+
+.results-stat-label {
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #757575;
+}
+
+.results-stat-value {
+    -fx-font-size: 32px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #212121;
+}
+
+.results-badge {
+    -fx-background-radius: 20px;
+    -fx-padding: 8px 20px;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+}
+
+.results-badge-success {
+    -fx-background-color: linear-gradient(135deg, rgba(102, 187, 106, 0.2) 0%, rgba(67, 160, 71, 0.2) 100%);
+    -fx-text-fill: #2E7D32;
+    -fx-border-color: rgba(102, 187, 106, 0.5);
+    -fx-border-radius: 20px;
+    -fx-border-width: 1px;
+}
+
+.results-badge-warning {
+    -fx-background-color: linear-gradient(135deg, rgba(255, 167, 38, 0.2) 0%, rgba(251, 140, 0, 0.2) 100%);
+    -fx-text-fill: #E65100;
+    -fx-border-color: rgba(255, 167, 38, 0.5);
+    -fx-border-radius: 20px;
+    -fx-border-width: 1px;
+}
+
+.results-badge-danger {
+    -fx-background-color: linear-gradient(135deg, rgba(239, 83, 80, 0.2) 0%, rgba(229, 57, 53, 0.2) 100%);
+    -fx-text-fill: #C62828;
+    -fx-border-color: rgba(239, 83, 80, 0.5);
+    -fx-border-radius: 20px;
+    -fx-border-width: 1px;
+}
+
+.results-insight {
+    -fx-font-size: 15px;
+    -fx-text-fill: #546E7A;
+    -fx-line-spacing: 4px;
+}
+
+/* Share Button - Light Mode */
+.share-button {
+    -fx-background-color: linear-gradient(135deg, #9575CD 0%, #7E57C2 100%);
+    -fx-text-fill: #FFFFFF;
+    -fx-background-radius: 25px;
+    -fx-padding: 12px 30px;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+    -fx-effect: dropshadow(gaussian, rgba(149, 117, 205, 0.5), 15, 0, 0, 8);
+}
+
+.share-button:hover {
+    -fx-background-color: linear-gradient(135deg, #B39DDB 0%, #9575CD 100%);
+    -fx-effect: dropshadow(gaussian, rgba(149, 117, 205, 0.7), 25, 0, 0, 0);
+}
+
+/* Theme Toggle Button - Light Mode */
+.theme-toggle-button {
+    -fx-background-color: rgba(0, 0, 0, 0.05);
+    -fx-background-radius: 20px;
+    -fx-padding: 8px 16px;
+    -fx-text-fill: #37474F;
+    -fx-font-size: 13px;
+    -fx-border-color: rgba(0, 0, 0, 0.1);
+    -fx-border-radius: 20px;
+    -fx-border-width: 1px;
+}
+
+.theme-toggle-button:hover {
+    -fx-background-color: rgba(76, 175, 80, 0.1);
+    -fx-border-color: rgba(76, 175, 80, 0.3);
+    -fx-effect: dropshadow(gaussian, rgba(76, 175, 80, 0.2), 10, 0, 0, 0);
+}
+
+/* Particle Background */
+.particle-background {
+    -fx-background-color: transparent;
+}
