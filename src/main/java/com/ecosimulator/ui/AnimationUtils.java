@@ -26,8 +26,8 @@ public class AnimationUtils {
     // Custom interpolators for smooth animations
     public static final Interpolator EASE_OUT_CUBIC = Interpolator.SPLINE(0.33, 1, 0.68, 1);
     public static final Interpolator EASE_IN_OUT_CUBIC = Interpolator.SPLINE(0.65, 0, 0.35, 1);
-    // Ease-out effect with slight deceleration: starts faster and slows down toward the end.
-    // Control points (0.25, 0.1) and (0.25, 1) create a smooth ease-in-out curve within [0,1] range.
+    // Ease-out interpolator: starts faster and smoothly decelerates toward the end.
+    // Control points (0.25, 0.1) and (0.25, 1) create a smooth easing curve within [0,1] range.
     public static final Interpolator EASE_OUT_BACK = Interpolator.SPLINE(0.25, 0.1, 0.25, 1);
     // Smooth ease-in-out interpolator: accelerates at the start and decelerates at the end.
     // Control points (0.42, 0) and (0.58, 1) approximate the CSS ease-in-out timing function.
