@@ -81,8 +81,7 @@ public class IconManager {
         
         for (String ext : extensions) {
             String path = ICONS_PATH + iconName + ext;
-            try {
-                InputStream is = IconManager.class.getResourceAsStream(path);
+            try (InputStream is = IconManager.class.getResourceAsStream(path)) {
                 if (is != null) {
                     Image image = new Image(is);
                     LOGGER.fine("Loaded icon: " + path);

@@ -78,9 +78,14 @@ public class ThemeManager {
      */
     public static void applyDarkMode(Scene scene) {
         scene.getStylesheets().clear();
-        String darkCss = ThemeManager.class.getResource(DARK_THEME_PATH).toExternalForm();
-        scene.getStylesheets().add(darkCss);
-        isDarkMode = true;
+        java.net.URL darkResource = ThemeManager.class.getResource(DARK_THEME_PATH);
+        if (darkResource != null) {
+            String darkCss = darkResource.toExternalForm();
+            scene.getStylesheets().add(darkCss);
+            isDarkMode = true;
+        } else {
+            System.err.println("Dark theme CSS not found: " + DARK_THEME_PATH);
+        }
     }
     
     /**
@@ -89,9 +94,14 @@ public class ThemeManager {
      */
     public static void applyLightMode(Scene scene) {
         scene.getStylesheets().clear();
-        String lightCss = ThemeManager.class.getResource(LIGHT_THEME_PATH).toExternalForm();
-        scene.getStylesheets().add(lightCss);
-        isDarkMode = false;
+        java.net.URL lightResource = ThemeManager.class.getResource(LIGHT_THEME_PATH);
+        if (lightResource != null) {
+            String lightCss = lightResource.toExternalForm();
+            scene.getStylesheets().add(lightCss);
+            isDarkMode = false;
+        } else {
+            System.err.println("Light theme CSS not found: " + LIGHT_THEME_PATH);
+        }
     }
     
     /**
@@ -141,12 +151,20 @@ public class ThemeManager {
         
         if (isDarkMode) {
             // Switch to light mode
-            String lightCss = ThemeManager.class.getResource(LIGHT_THEME_PATH).toExternalForm();
-            scene.getStylesheets().add(lightCss);
+            java.net.URL lightResource = ThemeManager.class.getResource(LIGHT_THEME_PATH);
+            if (lightResource != null) {
+                scene.getStylesheets().add(lightResource.toExternalForm());
+            } else {
+                System.err.println("Light theme CSS not found: " + LIGHT_THEME_PATH);
+            }
         } else {
             // Switch to dark mode
-            String darkCss = ThemeManager.class.getResource(DARK_THEME_PATH).toExternalForm();
-            scene.getStylesheets().add(darkCss);
+            java.net.URL darkResource = ThemeManager.class.getResource(DARK_THEME_PATH);
+            if (darkResource != null) {
+                scene.getStylesheets().add(darkResource.toExternalForm());
+            } else {
+                System.err.println("Dark theme CSS not found: " + DARK_THEME_PATH);
+            }
         }
     }
     

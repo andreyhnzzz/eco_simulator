@@ -494,21 +494,30 @@ public class ResultsScreen extends StackPane {
     private void startParticleAnimation() {
         Random random = new Random();
         
-        // Create initial particles
-        for (int i = 0; i < 30; i++) {
+        // Pre-defined particle colors for better performance
+        Color[] particleColors = {
+            Color.rgb(0, 229, 255, 0.3),
+            Color.rgb(0, 229, 255, 0.4),
+            Color.rgb(0, 229, 255, 0.5),
+            Color.rgb(187, 134, 252, 0.3),
+            Color.rgb(187, 134, 252, 0.4)
+        };
+        
+        // Create initial particles (reduced count for performance)
+        for (int i = 0; i < 20; i++) {
             Circle particle = new Circle(2 + random.nextDouble() * 3);
-            particle.setFill(Color.rgb(0, 229, 255, 0.3 + random.nextDouble() * 0.3));
+            particle.setFill(particleColors[random.nextInt(particleColors.length)]);
             particle.setCenterX(random.nextDouble() * 900);
             particle.setCenterY(random.nextDouble() * 700);
             particles.add(particle);
             particleContainer.getChildren().add(particle);
         }
         
-        // Animate particles
-        particleTimeline = new Timeline(new KeyFrame(Duration.millis(50), e -> {
+        // Animate particles with longer interval for better performance
+        particleTimeline = new Timeline(new KeyFrame(Duration.millis(100), e -> {
             for (Circle particle : particles) {
-                particle.setCenterY(particle.getCenterY() - 0.5 - random.nextDouble());
-                particle.setCenterX(particle.getCenterX() + (random.nextDouble() - 0.5));
+                particle.setCenterY(particle.getCenterY() - 0.8 - random.nextDouble() * 0.5);
+                particle.setCenterX(particle.getCenterX() + (random.nextDouble() - 0.5) * 0.8);
                 
                 // Reset particle when it goes off screen
                 if (particle.getCenterY() < -10) {
@@ -523,11 +532,19 @@ public class ResultsScreen extends StackPane {
     
     private void playBalanceConfetti() {
         Random random = new Random();
-        String[] colors = {"#69F0AE", "#00E5FF", "#BB86FC", "#FFD740", "#FF4081"};
+        // Pre-computed colors for better performance
+        Color[] confettiColors = {
+            Color.web("#69F0AE"),
+            Color.web("#00E5FF"),
+            Color.web("#BB86FC"),
+            Color.web("#FFD740"),
+            Color.web("#FF4081")
+        };
         
-        for (int i = 0; i < 50; i++) {
+        // Reduced confetti count for better performance
+        for (int i = 0; i < 35; i++) {
             Circle confetti = new Circle(3 + random.nextDouble() * 4);
-            confetti.setFill(Color.web(colors[random.nextInt(colors.length)]));
+            confetti.setFill(confettiColors[random.nextInt(confettiColors.length)]);
             confetti.setCenterX(400 + (random.nextDouble() - 0.5) * 100);
             confetti.setCenterY(100);
             confetti.setOpacity(0.8);
