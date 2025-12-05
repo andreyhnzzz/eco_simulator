@@ -26,8 +26,10 @@ public class AnimationUtils {
     // Custom interpolators for smooth animations
     public static final Interpolator EASE_OUT_CUBIC = Interpolator.SPLINE(0.33, 1, 0.68, 1);
     public static final Interpolator EASE_IN_OUT_CUBIC = Interpolator.SPLINE(0.65, 0, 0.35, 1);
-    public static final Interpolator EASE_OUT_BACK = Interpolator.SPLINE(0.34, 1.56, 0.64, 1);
-    public static final Interpolator SPRING = Interpolator.SPLINE(0.5, 1.5, 0.5, 1);
+    // Note: Original value 1.56 was out of range [0,1], corrected to 1.0 to preserve quick-out easing intent
+    public static final Interpolator EASE_OUT_BACK = Interpolator.SPLINE(0.34, 1.0, 0.64, 1);
+    // Note: Original value 1.5 was out of range [0,1], corrected to 1.0 to preserve spring-like easing intent
+    public static final Interpolator SPRING = Interpolator.SPLINE(0.5, 1.0, 0.5, 1);
 
     private AnimationUtils() {
         // Private constructor to prevent instantiation
@@ -539,5 +541,46 @@ public class AnimationUtils {
         FadeTransition fade = fadeOut(overlay, DURATION_FAST);
         fade.setOnFinished(e -> overlay.setVisible(false));
         return fade;
+    }
+
+    // ==========================================
+    // VALIDATION UTILITIES
+    // ==========================================
+
+    /**
+     * Validates that a spline control point coordinate is within the valid range [0.0, 1.0].
+     * Use this method before creating SplineInterpolator to prevent IllegalArgumentException.
+     * 
+     * @param value the control point coordinate value to validate
+     * @param paramName the name of the parameter (for error message clarity)
+     * @return the validated value if it is within range
+     * @throws IllegalArgumentException if the value is outside the range [0.0, 1.0]
+     */
+    public static double validateSplineControlPoint(double value, String paramName) {
+        if (value < 0.0 || value > 1.0) {
+            throw new IllegalArgumentException(
+                String.format("Spline control point '%s' must be in range [0.0, 1.0], but was: %f", 
+                    paramName, value));
+        }
+        return value;
+    }
+
+    /**
+     * Creates a validated SPLINE interpolator, ensuring all control point coordinates
+     * are within the valid range [0.0, 1.0].
+     * 
+     * @param x1 x coordinate of the first control point
+     * @param y1 y coordinate of the first control point
+     * @param x2 x coordinate of the second control point
+     * @param y2 y coordinate of the second control point
+     * @return a validated Interpolator.SPLINE instance
+     * @throws IllegalArgumentException if any coordinate is outside [0.0, 1.0]
+     */
+    public static Interpolator createValidatedSpline(double x1, double y1, double x2, double y2) {
+        validateSplineControlPoint(x1, "x1");
+        validateSplineControlPoint(y1, "y1");
+        validateSplineControlPoint(x2, "x2");
+        validateSplineControlPoint(y2, "y2");
+        return Interpolator.SPLINE(x1, y1, x2, y2);
     }
 }
