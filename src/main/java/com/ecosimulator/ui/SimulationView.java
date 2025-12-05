@@ -24,17 +24,22 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Main simulation view controller
+ * Main simulation view controller with premium animations and glassmorphism effects
  */
 public class SimulationView extends BorderPane {
     private static final Logger LOGGER = Logger.getLogger(SimulationView.class.getName());
 
     // UI Components
     private GridPane gridPane;
+    private VBox controlPanel;
+    private VBox statsPanel;
+    private HBox statusPanel;
     private ComboBox<Scenario> scenarioComboBox;
     private CheckBox thirdSpeciesCheckBox;
     private CheckBox mutationsCheckBox;
@@ -42,6 +47,7 @@ public class SimulationView extends BorderPane {
     private Button startButton;
     private Button pauseButton;
     private Button resetButton;
+    private Button settingsButton;
     private Label turnLabel;
     private Label predatorLabel;
     private Label preyLabel;
@@ -58,6 +64,10 @@ public class SimulationView extends BorderPane {
 
     // Grid cells for animation
     private Rectangle[][] gridCells;
+    
+    // Track previous cell states for animations
+    private CellType[][] previousGrid;
+    private Map<String, Timeline> mutationAnimations = new HashMap<>();
 
     private static final int CELL_SIZE = 20;
     private static final int DEFAULT_GRID_SIZE = 25;
@@ -65,39 +75,56 @@ public class SimulationView extends BorderPane {
     public SimulationView() {
         this.config = new SimulationConfig().withGridSize(DEFAULT_GRID_SIZE);
         this.emailService = new EmailService();
+        this.previousGrid = new CellType[DEFAULT_GRID_SIZE][DEFAULT_GRID_SIZE];
+        
+        // Initialize previous grid to EMPTY
+        for (int i = 0; i < DEFAULT_GRID_SIZE; i++) {
+            for (int j = 0; j < DEFAULT_GRID_SIZE; j++) {
+                previousGrid[i][j] = CellType.EMPTY;
+            }
+        }
         
         initializeUI();
         initializeSimulation();
         applyStyles();
+        playEntranceAnimations();
     }
 
     private void initializeUI() {
         setPadding(new Insets(20));
         
-        // Top - Controls
-        setTop(createControlPanel());
+        // Top - Controls with glassmorphism panel
+        controlPanel = createControlPanel();
+        setTop(controlPanel);
         
         // Center - Simulation Grid
         setCenter(createGridPanel());
         
-        // Right - Statistics
-        setRight(createStatsPanel());
+        // Right - Statistics with glassmorphism
+        statsPanel = createStatsPanel();
+        setRight(statsPanel);
         
         // Bottom - Status
-        setBottom(createStatusPanel());
+        statusPanel = createStatusPanel();
+        setBottom(statusPanel);
     }
 
     private VBox createControlPanel() {
-        VBox controlPanel = new VBox(15);
-        controlPanel.setPadding(new Insets(10, 10, 20, 10));
-        controlPanel.setAlignment(Pos.CENTER);
+        VBox panel = new VBox(18);
+        panel.setPadding(new Insets(20, 20, 25, 20));
+        panel.setAlignment(Pos.CENTER);
+        panel.getStyleClass().addAll("glass-panel", "control-panel");
 
-        // Title
+        // Title with enhanced styling
         Label titleLabel = new Label("🌿 Eco Simulator 🌿");
         titleLabel.getStyleClass().add("title-label");
+        
+        // Subtitle
+        Label subtitleLabel = new Label("Simulador Ecológico Interactivo");
+        subtitleLabel.getStyleClass().add("subtitle-label");
 
-        // Scenario selection
-        HBox scenarioBox = new HBox(10);
+        // Scenario selection with enhanced styling
+        HBox scenarioBox = new HBox(12);
         scenarioBox.setAlignment(Pos.CENTER);
         
         Label scenarioLabel = new Label("Escenario:");
@@ -108,11 +135,12 @@ public class SimulationView extends BorderPane {
         scenarioComboBox.setValue(Scenario.BALANCED);
         scenarioComboBox.getStyleClass().add("combo-box-custom");
         scenarioComboBox.setOnAction(e -> updateConfig());
+        scenarioComboBox.setTooltip(new Tooltip("Seleccione el escenario inicial"));
         
         scenarioBox.getChildren().addAll(scenarioLabel, scenarioComboBox);
 
-        // Extensions (checkboxes)
-        HBox extensionsBox = new HBox(30);
+        // Extensions (checkboxes) with enhanced styling
+        HBox extensionsBox = new HBox(35);
         extensionsBox.setAlignment(Pos.CENTER);
         
         thirdSpeciesCheckBox = new CheckBox("Tercer Especie 🦎");
@@ -125,8 +153,8 @@ public class SimulationView extends BorderPane {
         
         extensionsBox.getChildren().addAll(thirdSpeciesCheckBox, mutationsCheckBox);
 
-        // Speed control
-        HBox speedBox = new HBox(10);
+        // Speed control with enhanced slider
+        HBox speedBox = new HBox(12);
         speedBox.setAlignment(Pos.CENTER);
         
         Label speedLabel = new Label("Velocidad:");
@@ -136,7 +164,7 @@ public class SimulationView extends BorderPane {
         speedSlider.setShowTickLabels(true);
         speedSlider.setShowTickMarks(true);
         speedSlider.setMajorTickUnit(500);
-        speedSlider.setPrefWidth(200);
+        speedSlider.setPrefWidth(220);
         speedSlider.getStyleClass().add("speed-slider");
         speedSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (runner != null) {
@@ -151,35 +179,46 @@ public class SimulationView extends BorderPane {
         
         speedBox.getChildren().addAll(speedLabel, speedSlider, speedValueLabel);
 
-        // Action buttons
-        HBox buttonBox = new HBox(15);
+        // Action buttons with premium styling and animations
+        HBox buttonBox = new HBox(18);
         buttonBox.setAlignment(Pos.CENTER);
         
-        startButton = new Button("▶ Iniciar");
-        startButton.getStyleClass().add("action-button");
-        startButton.getStyleClass().add("start-button");
-        startButton.setOnAction(e -> startSimulation());
+        startButton = createAnimatedButton("▶ Iniciar", "start-button");
+        startButton.setOnAction(e -> {
+            AnimationUtils.playButtonClickAnimation(startButton);
+            startSimulation();
+        });
         
-        pauseButton = new Button("⏸ Pausar");
-        pauseButton.getStyleClass().add("action-button");
-        pauseButton.getStyleClass().add("pause-button");
+        pauseButton = createAnimatedButton("⏸ Pausar", "pause-button");
         pauseButton.setDisable(true);
-        pauseButton.setOnAction(e -> togglePause());
+        pauseButton.setOnAction(e -> {
+            AnimationUtils.playButtonClickAnimation(pauseButton);
+            togglePause();
+        });
         
-        resetButton = new Button("🔄 Reiniciar");
-        resetButton.getStyleClass().add("action-button");
-        resetButton.getStyleClass().add("reset-button");
-        resetButton.setOnAction(e -> resetSimulation());
+        resetButton = createAnimatedButton("🔄 Reiniciar", "reset-button");
+        resetButton.setOnAction(e -> {
+            AnimationUtils.playButtonClickAnimation(resetButton);
+            resetSimulation();
+        });
 
-        // Settings button
-        Button settingsButton = new Button("⚙ Configurar Email");
-        settingsButton.getStyleClass().add("action-button");
-        settingsButton.setOnAction(e -> openSmtpSettings());
+        settingsButton = createAnimatedButton("⚙ Email", "settings-button");
+        settingsButton.setOnAction(e -> {
+            AnimationUtils.playButtonClickAnimation(settingsButton);
+            openSmtpSettings();
+        });
         
         buttonBox.getChildren().addAll(startButton, pauseButton, resetButton, settingsButton);
 
-        controlPanel.getChildren().addAll(titleLabel, scenarioBox, extensionsBox, speedBox, buttonBox);
-        return controlPanel;
+        panel.getChildren().addAll(titleLabel, subtitleLabel, scenarioBox, extensionsBox, speedBox, buttonBox);
+        return panel;
+    }
+    
+    private Button createAnimatedButton(String text, String styleClass) {
+        Button button = new Button(text);
+        button.getStyleClass().addAll("action-button", styleClass);
+        AnimationUtils.applyButtonHoverAnimation(button);
+        return button;
     }
 
     private ScrollPane createGridPanel() {
@@ -187,7 +226,7 @@ public class SimulationView extends BorderPane {
         gridPane.setHgap(1);
         gridPane.setVgap(1);
         gridPane.setAlignment(Pos.CENTER);
-        gridPane.setPadding(new Insets(10));
+        gridPane.setPadding(new Insets(12));
         gridPane.getStyleClass().add("grid-panel");
         
         gridCells = new Rectangle[DEFAULT_GRID_SIZE][DEFAULT_GRID_SIZE];
@@ -198,14 +237,17 @@ public class SimulationView extends BorderPane {
                 cell.setFill(Color.web("#2E7D32")); // Forest green
                 cell.setStroke(Color.web("#1B5E20"));
                 cell.setStrokeWidth(0.5);
-                cell.setArcWidth(3);
-                cell.setArcHeight(3);
+                cell.setArcWidth(4);
+                cell.setArcHeight(4);
                 gridCells[i][j] = cell;
                 gridPane.add(cell, j, i);
             }
         }
         
-        ScrollPane scrollPane = new ScrollPane(gridPane);
+        StackPane gridContainer = new StackPane(gridPane);
+        gridContainer.setPadding(new Insets(10));
+        
+        ScrollPane scrollPane = new ScrollPane(gridContainer);
         scrollPane.setFitToWidth(true);
         scrollPane.setFitToHeight(true);
         scrollPane.getStyleClass().add("grid-scroll");
@@ -214,43 +256,40 @@ public class SimulationView extends BorderPane {
     }
 
     private VBox createStatsPanel() {
-        VBox statsPanel = new VBox(15);
-        statsPanel.setPadding(new Insets(20));
-        statsPanel.setAlignment(Pos.TOP_CENTER);
-        statsPanel.setPrefWidth(200);
-        statsPanel.getStyleClass().add("stats-panel");
+        VBox panel = new VBox(16);
+        panel.setPadding(new Insets(22));
+        panel.setAlignment(Pos.TOP_CENTER);
+        panel.setPrefWidth(220);
+        panel.setMinWidth(200);
+        panel.getStyleClass().addAll("stats-panel", "glass-panel");
 
         Label statsTitle = new Label("📊 Estadísticas");
         statsTitle.getStyleClass().add("stats-title");
 
         turnLabel = new Label("Turno: 0");
         turnLabel.getStyleClass().add("stat-label");
+        turnLabel.setStyle("-fx-font-size: 16px;");
 
         Separator sep1 = new Separator();
 
         predatorLabel = new Label("🐺 Depredadores: 0");
-        predatorLabel.getStyleClass().add("stat-label");
-        predatorLabel.setStyle("-fx-text-fill: #D32F2F;");
-
+        predatorLabel.getStyleClass().addAll("stat-label", "stat-predator");
+        
         preyLabel = new Label("🐰 Presas: 0");
-        preyLabel.getStyleClass().add("stat-label");
-        preyLabel.setStyle("-fx-text-fill: #1976D2;");
+        preyLabel.getStyleClass().addAll("stat-label", "stat-prey");
 
         thirdSpeciesLabel = new Label("🦎 Tercer Especie: 0");
-        thirdSpeciesLabel.getStyleClass().add("stat-label");
-        thirdSpeciesLabel.setStyle("-fx-text-fill: #FF9800;");
+        thirdSpeciesLabel.getStyleClass().addAll("stat-label", "stat-third-species");
 
         mutatedLabel = new Label("🧬 Mutados: 0");
-        mutatedLabel.getStyleClass().add("stat-label");
-        mutatedLabel.setStyle("-fx-text-fill: #9C27B0;");
+        mutatedLabel.getStyleClass().addAll("stat-label", "stat-mutated");
 
         Separator sep2 = new Separator();
 
-        // Legend
         Label legendTitle = new Label("📍 Leyenda");
         legendTitle.getStyleClass().add("legend-title");
 
-        VBox legendBox = new VBox(8);
+        VBox legendBox = new VBox(10);
         legendBox.getChildren().addAll(
             createLegendItem("🐺 Depredador", "#D32F2F"),
             createLegendItem("🐰 Presa", "#1976D2"),
@@ -258,23 +297,31 @@ public class SimulationView extends BorderPane {
             createLegendItem("🌿 Vacío", "#2E7D32")
         );
 
-        statsPanel.getChildren().addAll(
+        panel.getChildren().addAll(
             statsTitle, turnLabel, sep1,
             predatorLabel, preyLabel, thirdSpeciesLabel, mutatedLabel,
             sep2, legendTitle, legendBox
         );
 
-        return statsPanel;
+        return panel;
     }
 
     private HBox createLegendItem(String text, String color) {
-        HBox item = new HBox(8);
+        HBox item = new HBox(10);
         item.setAlignment(Pos.CENTER_LEFT);
         
-        Rectangle colorBox = new Rectangle(15, 15);
+        Rectangle colorBox = new Rectangle(18, 18);
         colorBox.setFill(Color.web(color));
-        colorBox.setArcWidth(3);
-        colorBox.setArcHeight(3);
+        colorBox.setArcWidth(4);
+        colorBox.setArcHeight(4);
+        colorBox.setStroke(Color.web(color).darker());
+        colorBox.setStrokeWidth(1);
+        
+        DropShadow shadow = new DropShadow();
+        shadow.setRadius(3);
+        shadow.setOffsetY(1);
+        shadow.setColor(Color.rgb(0, 0, 0, 0.2));
+        colorBox.setEffect(shadow);
         
         Label label = new Label(text);
         label.getStyleClass().add("legend-label");
@@ -284,20 +331,28 @@ public class SimulationView extends BorderPane {
     }
 
     private HBox createStatusPanel() {
-        HBox statusPanel = new HBox(20);
-        statusPanel.setPadding(new Insets(15));
-        statusPanel.setAlignment(Pos.CENTER);
-        statusPanel.getStyleClass().add("status-panel");
+        HBox panel = new HBox(25);
+        panel.setPadding(new Insets(16, 20, 16, 20));
+        panel.setAlignment(Pos.CENTER);
+        panel.getStyleClass().addAll("status-panel", "glass-panel");
 
-        statusLabel = new Label("Listo para iniciar simulación");
+        statusLabel = new Label("✨ Listo para iniciar simulación");
         statusLabel.getStyleClass().add("status-label");
 
         progressBar = new ProgressBar(0);
-        progressBar.setPrefWidth(200);
+        progressBar.setPrefWidth(250);
+        progressBar.setPrefHeight(12);
         progressBar.getStyleClass().add("progress-bar-custom");
 
-        statusPanel.getChildren().addAll(statusLabel, progressBar);
-        return statusPanel;
+        Label progressLabel = new Label("0%");
+        progressLabel.getStyleClass().add("speed-value");
+        progressBar.progressProperty().addListener((obs, oldVal, newVal) -> {
+            int percentage = (int) (newVal.doubleValue() * 100);
+            progressLabel.setText(percentage + "%");
+        });
+
+        panel.getChildren().addAll(statusLabel, progressBar, progressLabel);
+        return panel;
     }
 
     private void initializeSimulation() {
@@ -323,26 +378,29 @@ public class SimulationView extends BorderPane {
 
         runner = new SimulationRunner(engine);
 
+        stopMutationAnimations();
         updateGridView();
         updateStatsView();
         
-        statusLabel.setText("Configuración: " + selectedScenario.getDisplayName() + 
+        statusLabel.setText("✨ " + selectedScenario.getDisplayName() + 
             (thirdSpecies ? " + Tercer Especie" : "") +
             (mutations ? " + Mutaciones" : ""));
     }
+    
+    private void stopMutationAnimations() {
+        mutationAnimations.values().forEach(Timeline::stop);
+        mutationAnimations.clear();
+    }
 
     private void startSimulation() {
-        if (runner != null) {
-            if (!runner.isRunning()) {
-                runner.start();
-                startButton.setDisable(true);
-                pauseButton.setDisable(false);
-                scenarioComboBox.setDisable(true);
-                thirdSpeciesCheckBox.setDisable(true);
-                mutationsCheckBox.setDisable(true);
-                statusLabel.setText("Simulación en progreso...");
-                animateButton(startButton);
-            }
+        if (runner != null && !runner.isRunning()) {
+            runner.start();
+            startButton.setDisable(true);
+            pauseButton.setDisable(false);
+            scenarioComboBox.setDisable(true);
+            thirdSpeciesCheckBox.setDisable(true);
+            mutationsCheckBox.setDisable(true);
+            statusLabel.setText("🔄 Simulación en progreso...");
         }
     }
 
@@ -351,11 +409,11 @@ public class SimulationView extends BorderPane {
             if (runner.isPaused()) {
                 runner.resume();
                 pauseButton.setText("⏸ Pausar");
-                statusLabel.setText("Simulación en progreso...");
+                statusLabel.setText("🔄 Simulación en progreso...");
             } else {
                 runner.pause();
                 pauseButton.setText("▶ Reanudar");
-                statusLabel.setText("Simulación pausada");
+                statusLabel.setText("⏸ Simulación pausada");
             }
         }
     }
@@ -371,7 +429,29 @@ public class SimulationView extends BorderPane {
         thirdSpeciesCheckBox.setDisable(false);
         mutationsCheckBox.setDisable(false);
         updateConfig();
-        statusLabel.setText("Simulación reiniciada - Lista para iniciar");
+        statusLabel.setText("🔄 Simulación reiniciada - Lista para iniciar");
+        playGridResetAnimation();
+    }
+    
+    private void playGridResetAnimation() {
+        for (int i = 0; i < DEFAULT_GRID_SIZE; i++) {
+            for (int j = 0; j < DEFAULT_GRID_SIZE; j++) {
+                final Rectangle cell = gridCells[i][j];
+                final int delay = (i + j) * 10;
+                
+                PauseTransition pause = new PauseTransition(Duration.millis(delay));
+                pause.setOnFinished(e -> {
+                    cell.setScaleX(0.8);
+                    cell.setScaleY(0.8);
+                    ScaleTransition scale = new ScaleTransition(Duration.millis(150), cell);
+                    scale.setToX(1.0);
+                    scale.setToY(1.0);
+                    scale.setInterpolator(AnimationUtils.EASE_OUT_BACK);
+                    scale.play();
+                });
+                pause.play();
+            }
+        }
     }
 
     private void updateGridView() {
@@ -382,23 +462,106 @@ public class SimulationView extends BorderPane {
             for (int i = 0; i < grid.length; i++) {
                 for (int j = 0; j < grid[i].length; j++) {
                     CellType cellType = grid[i][j];
+                    CellType prevType = previousGrid[i][j];
                     Color color = Color.web(cellType.getColor());
+                    Rectangle cell = gridCells[i][j];
                     
-                    // Check if creature at this position is mutated using O(1) lookup
                     boolean isMutated = engine.isCreatureMutatedAt(i, j);
+                    String posKey = i + "," + j;
                     
-                    gridCells[i][j].setFill(color);
-                    
-                    // Add glow effect for mutated creatures
-                    if (isMutated) {
-                        Glow glow = new Glow(0.8);
-                        gridCells[i][j].setEffect(glow);
+                    // Animate cell state changes
+                    if (cellType != prevType) {
+                        if (prevType == CellType.EMPTY && cellType != CellType.EMPTY) {
+                            playCellSpawnAnimation(cell, color);
+                        } else if (prevType != CellType.EMPTY && cellType == CellType.EMPTY) {
+                            playCellDeathAnimation(cell);
+                        } else {
+                            playReproductionEffect(cell, color);
+                        }
                     } else {
-                        gridCells[i][j].setEffect(null);
+                        cell.setFill(color);
                     }
+                    
+                    // Handle mutation glow
+                    if (isMutated && !mutationAnimations.containsKey(posKey)) {
+                        Glow glow = new Glow(0.6);
+                        DropShadow shadow = new DropShadow();
+                        shadow.setRadius(6);
+                        shadow.setSpread(0.4);
+                        shadow.setColor(Color.rgb(156, 39, 176, 0.8));
+                        shadow.setInput(glow);
+                        cell.setEffect(shadow);
+                        
+                        Timeline pulseTimeline = new Timeline(
+                            new KeyFrame(Duration.ZERO, new KeyValue(glow.levelProperty(), 0.4)),
+                            new KeyFrame(Duration.millis(600), new KeyValue(glow.levelProperty(), 0.8)),
+                            new KeyFrame(Duration.millis(1200), new KeyValue(glow.levelProperty(), 0.4))
+                        );
+                        pulseTimeline.setCycleCount(Animation.INDEFINITE);
+                        pulseTimeline.play();
+                        mutationAnimations.put(posKey, pulseTimeline);
+                    } else if (!isMutated) {
+                        Timeline existingAnimation = mutationAnimations.remove(posKey);
+                        if (existingAnimation != null) {
+                            existingAnimation.stop();
+                        }
+                        if (prevType == cellType) {
+                            cell.setEffect(null);
+                        }
+                    }
+                    
+                    previousGrid[i][j] = cellType;
                 }
             }
         });
+    }
+    
+    private void playCellSpawnAnimation(Rectangle cell, Color targetColor) {
+        cell.setFill(targetColor);
+        cell.setScaleX(0.3);
+        cell.setScaleY(0.3);
+        cell.setOpacity(0);
+        
+        ScaleTransition scale = new ScaleTransition(Duration.millis(200), cell);
+        scale.setToX(1.0);
+        scale.setToY(1.0);
+        scale.setInterpolator(AnimationUtils.EASE_OUT_BACK);
+        
+        FadeTransition fade = new FadeTransition(Duration.millis(150), cell);
+        fade.setToValue(1.0);
+        
+        new ParallelTransition(scale, fade).play();
+    }
+    
+    private void playCellDeathAnimation(Rectangle cell) {
+        Color emptyColor = Color.web(CellType.EMPTY.getColor());
+        
+        ScaleTransition scale = new ScaleTransition(Duration.millis(150), cell);
+        scale.setToX(0.3);
+        scale.setToY(0.3);
+        
+        FadeTransition fade = new FadeTransition(Duration.millis(150), cell);
+        fade.setToValue(0.3);
+        
+        ParallelTransition death = new ParallelTransition(scale, fade);
+        death.setOnFinished(e -> {
+            cell.setFill(emptyColor);
+            cell.setScaleX(1.0);
+            cell.setScaleY(1.0);
+            cell.setOpacity(1.0);
+            cell.setEffect(null);
+        });
+        death.play();
+    }
+    
+    private void playReproductionEffect(Rectangle cell, Color targetColor) {
+        cell.setFill(targetColor);
+        ScaleTransition pulse = new ScaleTransition(Duration.millis(100), cell);
+        pulse.setToX(1.2);
+        pulse.setToY(1.2);
+        pulse.setAutoReverse(true);
+        pulse.setCycleCount(2);
+        pulse.play();
     }
 
     private void updateStatsView() {
@@ -406,16 +569,35 @@ public class SimulationView extends BorderPane {
             if (engine == null) return;
             
             SimulationStats stats = engine.getStats();
-            turnLabel.setText("Turno: " + stats.getTurn());
-            predatorLabel.setText("🐺 Depredadores: " + stats.getPredatorCount());
-            preyLabel.setText("🐰 Presas: " + stats.getPreyCount());
-            thirdSpeciesLabel.setText("🦎 Tercer Especie: " + stats.getThirdSpeciesCount());
-            mutatedLabel.setText("🧬 Mutados: " + stats.getMutatedCount());
+            animateStatLabel(turnLabel, "Turno: " + stats.getTurn());
+            animateStatLabel(predatorLabel, "🐺 Depredadores: " + stats.getPredatorCount());
+            animateStatLabel(preyLabel, "🐰 Presas: " + stats.getPreyCount());
+            animateStatLabel(thirdSpeciesLabel, "🦎 Tercer Especie: " + stats.getThirdSpeciesCount());
+            animateStatLabel(mutatedLabel, "🧬 Mutados: " + stats.getMutatedCount());
             
-            // Update progress bar
             double progress = (double) stats.getTurn() / config.getMaxTurns();
-            progressBar.setProgress(progress);
+            animateProgressBar(progress);
         });
+    }
+    
+    private void animateStatLabel(Label label, String newText) {
+        if (!label.getText().equals(newText)) {
+            label.setText(newText);
+            ScaleTransition pulse = new ScaleTransition(Duration.millis(80), label);
+            pulse.setToX(1.05);
+            pulse.setToY(1.05);
+            pulse.setAutoReverse(true);
+            pulse.setCycleCount(2);
+            pulse.play();
+        }
+    }
+    
+    private void animateProgressBar(double targetProgress) {
+        Timeline timeline = new Timeline(
+            new KeyFrame(Duration.millis(150),
+                new KeyValue(progressBar.progressProperty(), targetProgress, AnimationUtils.EASE_OUT_CUBIC))
+        );
+        timeline.play();
     }
 
     private void onSimulationEnd() {
@@ -423,44 +605,29 @@ public class SimulationView extends BorderPane {
             SimulationStats stats = engine.getStats();
             String result = stats.getWinner();
             
-            statusLabel.setText("Simulación terminada: " + result);
+            statusLabel.setText("🏆 Simulación terminada: " + result);
             startButton.setDisable(false);
             pauseButton.setDisable(true);
             scenarioComboBox.setDisable(false);
             thirdSpeciesCheckBox.setDisable(false);
             mutationsCheckBox.setDisable(false);
 
-            // Generate PDF report and send via email
+            stopMutationAnimations();
             generateAndSendReport(stats);
 
-            // Show end dialog
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle("Simulación Completada");
             alert.setHeaderText("🏆 Resultado Final");
             alert.setContentText(String.format(
-                "Turno final: %d\n" +
-                "Depredadores: %d\n" +
-                "Presas: %d\n" +
-                "Tercer Especie: %d\n" +
-                "Criaturas mutadas: %d\n\n" +
-                "Resultado: %s",
-                stats.getTurn(),
-                stats.getPredatorCount(),
-                stats.getPreyCount(),
-                stats.getThirdSpeciesCount(),
-                stats.getMutatedCount(),
-                result
+                "Turno final: %d\nDepredadores: %d\nPresas: %d\nTercer Especie: %d\nMutados: %d\n\nResultado: %s",
+                stats.getTurn(), stats.getPredatorCount(), stats.getPreyCount(),
+                stats.getThirdSpeciesCount(), stats.getMutatedCount(), result
             ));
             alert.showAndWait();
         });
     }
 
-    /**
-     * Generate PDF report and attempt to send it via email.
-     * Shows non-blocking notification on success or failure.
-     */
     private void generateAndSendReport(SimulationStats stats) {
-        // Generate PDF report
         String reportFilename = PDFReportGenerator.getDefaultFilename();
         Path reportsDir = Paths.get("reports");
         
@@ -470,134 +637,135 @@ public class SimulationView extends BorderPane {
             }
             
             String reportPath = reportsDir.resolve(reportFilename).toString();
+            int extinctionTurn = (stats.getPredatorCount() == 0 || stats.getPreyCount() == 0) ? stats.getTurn() : -1;
             
-            // Find extinction turn if applicable
-            int extinctionTurn = -1;
-            if (stats.getPredatorCount() == 0 || stats.getPreyCount() == 0) {
-                extinctionTurn = stats.getTurn();
-            }
-            
-            PDFReportGenerator.generateSimpleReport(
-                reportPath,
-                stats.getTurn(),
-                stats,
-                DEFAULT_GRID_SIZE,
-                extinctionTurn
-            );
+            PDFReportGenerator.generateSimpleReport(reportPath, stats.getTurn(), stats, DEFAULT_GRID_SIZE, extinctionTurn);
             
             File reportFile = new File(reportPath);
             LOGGER.info("PDF report generated: " + reportPath);
             
-            // Check if user is logged in and has email
             if (Session.isLoggedIn()) {
                 var currentUser = Session.getUser();
                 if (currentUser != null && currentUser.getEmail() != null && !currentUser.getEmail().isEmpty()) {
                     String userEmail = currentUser.getEmail();
                     String subject = "Eco Simulator - Simulation Report";
-                    String body = "Hello " + currentUser.getName() + ",\n\n" +
-                                 "Attached is your simulation report.\n\n" +
-                                 "Simulation Results:\n" +
-                                 "- Final Turn: " + stats.getTurn() + "\n" +
-                                 "- Predators: " + stats.getPredatorCount() + "\n" +
-                                 "- Prey: " + stats.getPreyCount() + "\n" +
-                             "- Third Species: " + stats.getThirdSpeciesCount() + "\n" +
-                             "- Result: " + stats.getWinner() + "\n\n" +
-                             "Best regards,\nEco Simulator";
-                
-                // Attempt to send email
-                boolean emailSent = emailService.sendReport(userEmail, reportFile, subject, body);
-                
-                // Show non-blocking notification
-                showEmailNotification(emailSent, userEmail, reportPath);
+                    String body = "Hello " + currentUser.getName() + ",\n\nAttached is your simulation report.\n\nBest regards,\nEco Simulator";
+                    
+                    boolean emailSent = emailService.sendReport(userEmail, reportFile, subject, body);
+                    showEmailNotification(emailSent, userEmail, reportPath);
                 } else {
-                    LOGGER.info("User not logged in or no email configured. Report saved locally only.");
-                    showNotification("📄 Report Saved", 
-                        "Report saved to: " + reportPath + "\n" +
-                        "Login and configure email to send reports automatically.",
-                        Alert.AlertType.INFORMATION);
+                    showNotification("📄 Report Saved", "Report saved to: " + reportPath, Alert.AlertType.INFORMATION);
                 }
             } else {
-                LOGGER.info("User not logged in. Report saved locally only.");
-                showNotification("📄 Report Saved", 
-                    "Report saved to: " + reportPath + "\n" +
-                    "Login to enable email sending.",
-                    Alert.AlertType.INFORMATION);
+                showNotification("📄 Report Saved", "Report saved to: " + reportPath, Alert.AlertType.INFORMATION);
             }
             
         } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Failed to generate PDF report", e);
-            showNotification("⚠️ Report Generation Failed", 
-                "Could not generate PDF report: " + e.getMessage(),
-                Alert.AlertType.WARNING);
+            showNotification("⚠️ Report Generation Failed", "Could not generate PDF report: " + e.getMessage(), Alert.AlertType.WARNING);
         }
     }
 
-    /**
-     * Show notification about email send status.
-     */
     private void showEmailNotification(boolean success, String email, String reportPath) {
         if (success) {
-            showNotification("📧 Email Sent", 
-                "Report sent to: " + email + "\n" +
-                "Local copy: " + reportPath,
-                Alert.AlertType.INFORMATION);
+            showNotification("📧 Email Sent", "Report sent to: " + email + "\nLocal copy: " + reportPath, Alert.AlertType.INFORMATION);
         } else {
-            String fallbackDir = EmailService.getFallbackDirectory();
-            showNotification("📧 Email Failed", 
-                "Could not send email to: " + email + "\n" +
-                "Report saved locally:\n" +
-                "- Original: " + reportPath + "\n" +
-                "- Fallback: " + fallbackDir + "/\n\n" +
-                "Check SMTP settings or try again later.",
-                Alert.AlertType.WARNING);
+            showNotification("📧 Email Failed", "Could not send email. Report saved locally.", Alert.AlertType.WARNING);
         }
     }
 
-    /**
-     * Show a non-blocking notification alert.
-     */
     private void showNotification(String title, String message, Alert.AlertType type) {
         Platform.runLater(() -> {
             Alert alert = new Alert(type);
             alert.setTitle(title);
             alert.setHeaderText(null);
             alert.setContentText(message);
-            alert.show(); // Non-blocking
+            alert.show();
         });
     }
 
-    /**
-     * Open SMTP settings dialog.
-     */
     private void openSmtpSettings() {
         Stage stage = (Stage) getScene().getWindow();
         SMTPSettingsController.showDialog(stage, emailService);
     }
 
-    private void animateButton(Button button) {
-        ScaleTransition scale = new ScaleTransition(Duration.millis(100), button);
-        scale.setToX(1.1);
-        scale.setToY(1.1);
-        scale.setAutoReverse(true);
-        scale.setCycleCount(2);
-        scale.play();
-    }
-
     private void applyStyles() {
         getStyleClass().add("main-view");
         
-        // Apply drop shadow to the grid
         DropShadow dropShadow = new DropShadow();
-        dropShadow.setRadius(10);
-        dropShadow.setOffsetX(3);
-        dropShadow.setOffsetY(3);
-        dropShadow.setColor(Color.rgb(0, 0, 0, 0.3));
+        dropShadow.setRadius(15);
+        dropShadow.setOffsetY(8);
+        dropShadow.setSpread(0.1);
+        dropShadow.setColor(Color.rgb(27, 94, 32, 0.4));
         gridPane.setEffect(dropShadow);
     }
+    
+    private void playEntranceAnimations() {
+        controlPanel.setOpacity(0);
+        controlPanel.setTranslateY(-30);
+        
+        PauseTransition delay1 = new PauseTransition(Duration.millis(100));
+        delay1.setOnFinished(e -> AnimationUtils.slideUpAndFadeIn(controlPanel, AnimationUtils.DURATION_NORMAL).play());
+        delay1.play();
+        
+        statsPanel.setOpacity(0);
+        statsPanel.setTranslateX(50);
+        
+        PauseTransition delay2 = new PauseTransition(Duration.millis(200));
+        delay2.setOnFinished(e -> {
+            FadeTransition fade = new FadeTransition(AnimationUtils.DURATION_NORMAL, statsPanel);
+            fade.setToValue(1);
+            TranslateTransition slide = new TranslateTransition(AnimationUtils.DURATION_NORMAL, statsPanel);
+            slide.setToX(0);
+            slide.setInterpolator(AnimationUtils.EASE_OUT_CUBIC);
+            new ParallelTransition(fade, slide).play();
+        });
+        delay2.play();
+        
+        statusPanel.setOpacity(0);
+        statusPanel.setTranslateY(30);
+        
+        PauseTransition delay3 = new PauseTransition(Duration.millis(300));
+        delay3.setOnFinished(e -> {
+            FadeTransition fade = new FadeTransition(AnimationUtils.DURATION_NORMAL, statusPanel);
+            fade.setToValue(1);
+            TranslateTransition slide = new TranslateTransition(AnimationUtils.DURATION_NORMAL, statusPanel);
+            slide.setToY(0);
+            slide.setInterpolator(AnimationUtils.EASE_OUT_CUBIC);
+            new ParallelTransition(fade, slide).play();
+        });
+        delay3.play();
+        
+        PauseTransition gridDelay = new PauseTransition(Duration.millis(350));
+        gridDelay.setOnFinished(e -> playGridEntranceAnimation());
+        gridDelay.play();
+    }
+    
+    private void playGridEntranceAnimation() {
+        for (int i = 0; i < DEFAULT_GRID_SIZE; i++) {
+            for (int j = 0; j < DEFAULT_GRID_SIZE; j++) {
+                final Rectangle cell = gridCells[i][j];
+                final int delay = (i + j) * 6;
+                
+                cell.setOpacity(0);
+                cell.setScaleX(0.5);
+                cell.setScaleY(0.5);
+                
+                PauseTransition pause = new PauseTransition(Duration.millis(delay));
+                pause.setOnFinished(event -> {
+                    FadeTransition fade = new FadeTransition(Duration.millis(100), cell);
+                    fade.setToValue(1.0);
+                    ScaleTransition scale = new ScaleTransition(Duration.millis(100), cell);
+                    scale.setToX(1.0);
+                    scale.setToY(1.0);
+                    scale.setInterpolator(AnimationUtils.EASE_OUT_CUBIC);
+                    new ParallelTransition(fade, scale).play();
+                });
+                pause.play();
+            }
+        }
+    }
 
-    /**
-     * Get the email service for external configuration
-     */
     public EmailService getEmailService() {
         return emailService;
     }
