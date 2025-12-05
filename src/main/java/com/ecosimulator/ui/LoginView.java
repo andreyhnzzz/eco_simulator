@@ -448,7 +448,7 @@ public class LoginView extends StackPane {
 
     private void applyStyles() {
         getStyleClass().add("login-view");
-        setStyle("-fx-background-color: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #66a6ff 100%);");
+        setStyle("-fx-background-color: linear-gradient(to bottom right, #667eea, #764ba2, #66a6ff);");
         
         // Apply shadow to main content panel
         DropShadow shadow = new DropShadow();
