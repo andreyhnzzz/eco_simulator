@@ -92,6 +92,10 @@
                 <version>0.0.8</version>
                 <configuration>
                     <mainClass>com.ecosimulator/com.ecosimulator.EcoSimulatorApp</mainClass>
+                    <!-- Enable native access for JavaFX graphics to suppress restricted native access warning -->
+                    <options>
+                        <option>--enable-native-access=javafx.graphics</option>
+                    </options>
                 </configuration>
             </plugin>
             <plugin>
