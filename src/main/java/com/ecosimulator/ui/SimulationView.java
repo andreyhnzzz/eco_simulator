@@ -67,6 +67,12 @@ public class SimulationView extends BorderPane {
     // Grid cells for animation
     private Rectangle[][] gridCells;
     
+    // Grid cell containers (StackPane) for icons overlay
+    private StackPane[][] gridCellContainers;
+    
+    // Icons displayed on grid cells
+    private ImageView[][] gridCellIcons;
+    
     // Track previous cell states for animations
     private CellType[][] previousGrid;
     private Map<String, Timeline> mutationAnimations = new HashMap<>();
@@ -297,9 +303,12 @@ public class SimulationView extends BorderPane {
         gridPane.getStyleClass().add("grid-panel");
         
         gridCells = new Rectangle[DEFAULT_GRID_SIZE][DEFAULT_GRID_SIZE];
+        gridCellContainers = new StackPane[DEFAULT_GRID_SIZE][DEFAULT_GRID_SIZE];
+        gridCellIcons = new ImageView[DEFAULT_GRID_SIZE][DEFAULT_GRID_SIZE];
         
         for (int i = 0; i < DEFAULT_GRID_SIZE; i++) {
             for (int j = 0; j < DEFAULT_GRID_SIZE; j++) {
+                // Create cell background
                 Rectangle cell = new Rectangle(CELL_SIZE, CELL_SIZE);
                 cell.setFill(Color.web("#2E7D32")); // Forest green
                 cell.setStroke(Color.web("#1B5E20"));
@@ -307,7 +316,19 @@ public class SimulationView extends BorderPane {
                 cell.setArcWidth(4);
                 cell.setArcHeight(4);
                 gridCells[i][j] = cell;
-                gridPane.add(cell, j, i);
+                
+                // Create container for cell + icon overlay
+                StackPane cellContainer = new StackPane();
+                cellContainer.getChildren().add(cell);
+                cellContainer.setAlignment(Pos.CENTER);
+                cellContainer.setMinSize(CELL_SIZE, CELL_SIZE);
+                cellContainer.setMaxSize(CELL_SIZE, CELL_SIZE);
+                gridCellContainers[i][j] = cellContainer;
+                
+                // Initialize icon slot as null (no icon for empty cells)
+                gridCellIcons[i][j] = null;
+                
+                gridPane.add(cellContainer, j, i);
             }
         }
         
@@ -468,6 +489,21 @@ public class SimulationView extends BorderPane {
         mutationAnimations.values().forEach(Timeline::stop);
         mutationAnimations.clear();
     }
+    
+    /**
+     * Clear all icons from the grid
+     */
+    private void clearAllGridIcons() {
+        for (int i = 0; i < DEFAULT_GRID_SIZE; i++) {
+            for (int j = 0; j < DEFAULT_GRID_SIZE; j++) {
+                ImageView icon = gridCellIcons[i][j];
+                if (icon != null) {
+                    gridCellContainers[i][j].getChildren().remove(icon);
+                    gridCellIcons[i][j] = null;
+                }
+            }
+        }
+    }
 
     private void startSimulation() {
         if (runner != null && !runner.isRunning()) {
@@ -505,6 +541,7 @@ public class SimulationView extends BorderPane {
         scenarioComboBox.setDisable(false);
         thirdSpeciesCheckBox.setDisable(false);
         mutationsCheckBox.setDisable(false);
+        clearAllGridIcons();
         updateConfig();
         statusLabel.setText("🔄 Simulación reiniciada - Lista para iniciar");
         playGridResetAnimation();
@@ -540,8 +577,11 @@ public class SimulationView extends BorderPane {
                 for (int j = 0; j < grid[i].length; j++) {
                     CellType cellType = grid[i][j];
                     CellType prevType = previousGrid[i][j];
-                    Color color = Color.web(cellType.getColor());
+                    String colorStr = ThemeManager.isDarkMode() ? 
+                        getDarkModeColor(cellType) : cellType.getColor();
+                    Color color = Color.web(colorStr);
                     Rectangle cell = gridCells[i][j];
+                    StackPane container = gridCellContainers[i][j];
                     
                     boolean isMutated = engine.isCreatureMutatedAt(i, j);
                     String posKey = i + "," + j;
@@ -555,6 +595,9 @@ public class SimulationView extends BorderPane {
                         } else {
                             playReproductionEffect(cell, color);
                         }
+                        
+                        // Update icon when cell type changes
+                        updateCellIcon(i, j, cellType, container);
                     } else {
                         cell.setFill(color);
                     }
@@ -591,6 +634,47 @@ public class SimulationView extends BorderPane {
                 }
             }
         });
+    }
+    
+    /**
+     * Updates the icon displayed on a grid cell based on cell type
+     */
+    private void updateCellIcon(int row, int col, CellType cellType, StackPane container) {
+        // Remove existing icon if present
+        ImageView existingIcon = gridCellIcons[row][col];
+        if (existingIcon != null) {
+            container.getChildren().remove(existingIcon);
+            gridCellIcons[row][col] = null;
+        }
+        
+        // Get appropriate icon for cell type
+        String iconName = getIconNameForCellType(cellType);
+        if (iconName != null) {
+            ImageView icon = IconManager.getIconView(iconName, CELL_SIZE - 4);
+            if (icon != null) {
+                icon.setPreserveRatio(true);
+                icon.setSmooth(true);
+                gridCellIcons[row][col] = icon;
+                container.getChildren().add(icon);
+            }
+        }
+    }
+    
+    /**
+     * Returns the icon name for a given cell type
+     */
+    private String getIconNameForCellType(CellType cellType) {
+        switch (cellType) {
+            case PREDATOR:
+                return IconManager.PREDATOR;
+            case PREY:
+                return IconManager.PREY;
+            case THIRD_SPECIES:
+                return IconManager.SCAVENGER;
+            case EMPTY:
+            default:
+                return null; // No icon for empty cells
+        }
     }
     
     private void playCellSpawnAnimation(Rectangle cell, Color targetColor) {

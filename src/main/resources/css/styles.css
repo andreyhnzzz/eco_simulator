@@ -56,21 +56,21 @@
    =========================== */
 
 .main-view {
-    -fx-background-color: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 25%, #A5D6A7 50%, #81C784 75%, #66BB6A 100%);
+    -fx-background-color: linear-gradient(to bottom right, #E8F5E9, #C8E6C9, #A5D6A7, #81C784, #66BB6A);
 }
 
 .login-view {
-    -fx-background-color: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #66a6ff 100%);
+    -fx-background-color: linear-gradient(to bottom right, #667eea, #764ba2, #66a6ff);
 }
 
 /* Animated gradient background overlay */
 .animated-background {
-    -fx-background-color: linear-gradient(45deg, 
-        rgba(76, 175, 80, 0.1) 0%,
-        rgba(129, 199, 132, 0.1) 25%,
-        rgba(165, 214, 167, 0.1) 50%,
-        rgba(200, 230, 201, 0.1) 75%,
-        rgba(232, 245, 233, 0.1) 100%);
+    -fx-background-color: linear-gradient(to top right, 
+        rgba(76, 175, 80, 0.1),
+        rgba(129, 199, 132, 0.1),
+        rgba(165, 214, 167, 0.1),
+        rgba(200, 230, 201, 0.1),
+        rgba(232, 245, 233, 0.1));
 }
 
 /* ===========================
@@ -180,61 +180,61 @@
 
 /* Start Button - Vibrant Green Gradient */
 .start-button {
-    -fx-background-color: linear-gradient(135deg, #66BB6A 0%, #43A047 50%, #2E7D32 100%);
+    -fx-background-color: linear-gradient(to bottom right, #66BB6A, #43A047, #2E7D32);
     -fx-text-fill: white;
     -fx-effect: dropshadow(gaussian, rgba(67, 160, 71, 0.4), 12, 0, 0, 6);
 }
 
 .start-button:hover {
-    -fx-background-color: linear-gradient(135deg, #81C784 0%, #66BB6A 50%, #43A047 100%);
+    -fx-background-color: linear-gradient(to bottom right, #81C784, #66BB6A, #43A047);
     -fx-effect: dropshadow(gaussian, rgba(67, 160, 71, 0.5), 18, 0, 0, 10);
 }
 
 .start-button:disabled {
-    -fx-background-color: linear-gradient(135deg, #BDBDBD 0%, #9E9E9E 100%);
+    -fx-background-color: linear-gradient(to bottom right, #BDBDBD, #9E9E9E);
     -fx-text-fill: #757575;
     -fx-effect: none;
 }
 
 /* Pause Button - Warm Orange Gradient */
 .pause-button {
-    -fx-background-color: linear-gradient(135deg, #FFB74D 0%, #FFA726 50%, #FB8C00 100%);
+    -fx-background-color: linear-gradient(to bottom right, #FFB74D, #FFA726, #FB8C00);
     -fx-text-fill: white;
     -fx-effect: dropshadow(gaussian, rgba(255, 152, 0, 0.4), 12, 0, 0, 6);
 }
 
 .pause-button:hover {
-    -fx-background-color: linear-gradient(135deg, #FFCC02 0%, #FFB74D 50%, #FFA726 100%);
+    -fx-background-color: linear-gradient(to bottom right, #FFCC02, #FFB74D, #FFA726);
     -fx-effect: dropshadow(gaussian, rgba(255, 152, 0, 0.5), 18, 0, 0, 10);
 }
 
 .pause-button:disabled {
-    -fx-background-color: linear-gradient(135deg, #BDBDBD 0%, #9E9E9E 100%);
+    -fx-background-color: linear-gradient(to bottom right, #BDBDBD, #9E9E9E);
     -fx-text-fill: #757575;
     -fx-effect: none;
 }
 
 /* Reset Button - Cool Blue Gradient */
 .reset-button {
-    -fx-background-color: linear-gradient(135deg, #64B5F6 0%, #42A5F5 50%, #1E88E5 100%);
+    -fx-background-color: linear-gradient(to bottom right, #64B5F6, #42A5F5, #1E88E5);
     -fx-text-fill: white;
     -fx-effect: dropshadow(gaussian, rgba(30, 136, 229, 0.4), 12, 0, 0, 6);
 }
 
 .reset-button:hover {
-    -fx-background-color: linear-gradient(135deg, #90CAF9 0%, #64B5F6 50%, #42A5F5 100%);
+    -fx-background-color: linear-gradient(to bottom right, #90CAF9, #64B5F6, #42A5F5);
     -fx-effect: dropshadow(gaussian, rgba(30, 136, 229, 0.5), 18, 0, 0, 10);
 }
 
 /* Settings Button - Purple Gradient */
 .settings-button {
-    -fx-background-color: linear-gradient(135deg, #B39DDB 0%, #9575CD 50%, #7E57C2 100%);
+    -fx-background-color: linear-gradient(to bottom right, #B39DDB, #9575CD, #7E57C2);
     -fx-text-fill: white;
     -fx-effect: dropshadow(gaussian, rgba(126, 87, 194, 0.4), 12, 0, 0, 6);
 }
 
 .settings-button:hover {
-    -fx-background-color: linear-gradient(135deg, #D1C4E9 0%, #B39DDB 50%, #9575CD 100%);
+    -fx-background-color: linear-gradient(to bottom right, #D1C4E9, #B39DDB, #9575CD);
     -fx-effect: dropshadow(gaussian, rgba(126, 87, 194, 0.5), 18, 0, 0, 10);
 }
 
@@ -377,7 +377,7 @@
 }
 
 .extension-checkbox:selected .box {
-    -fx-background-color: linear-gradient(135deg, #66BB6A 0%, #4CAF50 100%);
+    -fx-background-color: linear-gradient(to bottom right, #66BB6A, #4CAF50);
     -fx-border-color: #4CAF50;
 }
 
@@ -416,7 +416,7 @@
 }
 
 .speed-slider .thumb {
-    -fx-background-color: linear-gradient(135deg, #81C784 0%, #4CAF50 50%, #388E3C 100%);
+    -fx-background-color: linear-gradient(to bottom right, #81C784, #4CAF50, #388E3C);
     -fx-background-radius: 50%;
     -fx-pref-width: 22px;
     -fx-pref-height: 22px;
@@ -425,7 +425,7 @@
 }
 
 .speed-slider .thumb:hover {
-    -fx-background-color: linear-gradient(135deg, #A5D6A7 0%, #66BB6A 50%, #4CAF50 100%);
+    -fx-background-color: linear-gradient(to bottom right, #A5D6A7, #66BB6A, #4CAF50);
     -fx-effect: dropshadow(gaussian, rgba(76, 175, 80, 0.5), 12, 0, 0, 6);
 }
 
@@ -446,7 +446,7 @@
    =========================== */
 
 .grid-panel {
-    -fx-background-color: linear-gradient(135deg, #1B5E20 0%, #2E7D32 50%, #388E3C 100%);
+    -fx-background-color: linear-gradient(to bottom right, #1B5E20, #2E7D32, #388E3C);
     -fx-background-radius: 16px;
     -fx-padding: 12px;
     -fx-effect: innershadow(gaussian, rgba(0, 0, 0, 0.3), 10, 0, 2, 2),
@@ -597,7 +597,7 @@
 }
 
 .progress-bar-custom .bar {
-    -fx-background-color: linear-gradient(90deg, #66BB6A 0%, #4CAF50 50%, #43A047 100%);
+    -fx-background-color: linear-gradient(to right, #66BB6A, #4CAF50, #43A047);
     -fx-background-radius: 8px;
     -fx-background-insets: 0;
     -fx-pref-height: 10px;
@@ -605,8 +605,8 @@
 
 /* Animated progress bar */
 .progress-bar-animated .bar {
-    -fx-background-color: linear-gradient(90deg, 
-        #66BB6A 0%, #4CAF50 25%, #81C784 50%, #4CAF50 75%, #66BB6A 100%);
+    -fx-background-color: linear-gradient(to right, 
+        #66BB6A, #4CAF50, #81C784, #4CAF50, #66BB6A);
 }
 
 /* ===========================
@@ -650,7 +650,7 @@
 }
 
 .dialog-pane > .header-panel {
-    -fx-background-color: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+    -fx-background-color: linear-gradient(to bottom right, #E8F5E9, #C8E6C9);
     -fx-background-radius: 16px 16px 0 0;
     -fx-padding: 20px;
 }
@@ -662,7 +662,7 @@
 }
 
 .dialog-pane .button {
-    -fx-background-color: linear-gradient(135deg, #66BB6A 0%, #4CAF50 100%);
+    -fx-background-color: linear-gradient(to bottom right, #66BB6A, #4CAF50);
     -fx-text-fill: white;
     -fx-background-radius: 8px;
     -fx-padding: 10px 24px;
@@ -671,11 +671,11 @@
 }
 
 .dialog-pane .button:hover {
-    -fx-background-color: linear-gradient(135deg, #81C784 0%, #66BB6A 100%);
+    -fx-background-color: linear-gradient(to bottom right, #81C784, #66BB6A);
 }
 
 .dialog-pane .button:pressed {
-    -fx-background-color: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+    -fx-background-color: linear-gradient(to bottom right, #4CAF50, #388E3C);
 }
 
 /* ===========================
@@ -734,7 +734,7 @@
 
 /* Custom Premium Tooltip */
 .premium-tooltip {
-    -fx-background-color: linear-gradient(135deg, #37474F 0%, #263238 100%);
+    -fx-background-color: linear-gradient(to bottom right, #37474F, #263238);
     -fx-border-color: rgba(255, 255, 255, 0.1);
     -fx-border-width: 1px;
     -fx-border-radius: 10px;
@@ -930,10 +930,10 @@
 
 /* Shimmer effect placeholder */
 .shimmer {
-    -fx-background-color: linear-gradient(90deg, 
-        #f0f0f0 0%, 
-        #e0e0e0 50%, 
-        #f0f0f0 100%);
+    -fx-background-color: linear-gradient(to right, 
+        #f0f0f0, 
+        #e0e0e0, 
+        #f0f0f0);
 }
 
 /* Card hover elevation */
@@ -952,7 +952,7 @@
    =========================== */
 
 .results-container {
-    -fx-background-color: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 25%, #A5D6A7 50%, #81C784 75%, #66BB6A 100%);
+    -fx-background-color: linear-gradient(to bottom right, #E8F5E9, #C8E6C9, #A5D6A7, #81C784, #66BB6A);
 }
 
 .results-scroll {
@@ -1010,7 +1010,7 @@
 }
 
 .results-badge-success {
-    -fx-background-color: linear-gradient(135deg, rgba(102, 187, 106, 0.2) 0%, rgba(67, 160, 71, 0.2) 100%);
+    -fx-background-color: linear-gradient(to bottom right, rgba(102, 187, 106, 0.2), rgba(67, 160, 71, 0.2));
     -fx-text-fill: #2E7D32;
     -fx-border-color: rgba(102, 187, 106, 0.5);
     -fx-border-radius: 20px;
@@ -1018,7 +1018,7 @@
 }
 
 .results-badge-warning {
-    -fx-background-color: linear-gradient(135deg, rgba(255, 167, 38, 0.2) 0%, rgba(251, 140, 0, 0.2) 100%);
+    -fx-background-color: linear-gradient(to bottom right, rgba(255, 167, 38, 0.2), rgba(251, 140, 0, 0.2));
     -fx-text-fill: #E65100;
     -fx-border-color: rgba(255, 167, 38, 0.5);
     -fx-border-radius: 20px;
@@ -1026,7 +1026,7 @@
 }
 
 .results-badge-danger {
-    -fx-background-color: linear-gradient(135deg, rgba(239, 83, 80, 0.2) 0%, rgba(229, 57, 53, 0.2) 100%);
+    -fx-background-color: linear-gradient(to bottom right, rgba(239, 83, 80, 0.2), rgba(229, 57, 53, 0.2));
     -fx-text-fill: #C62828;
     -fx-border-color: rgba(239, 83, 80, 0.5);
     -fx-border-radius: 20px;
@@ -1041,7 +1041,7 @@
 
 /* Share Button - Light Mode */
 .share-button {
-    -fx-background-color: linear-gradient(135deg, #9575CD 0%, #7E57C2 100%);
+    -fx-background-color: linear-gradient(to bottom right, #9575CD, #7E57C2);
     -fx-text-fill: #FFFFFF;
     -fx-background-radius: 25px;
     -fx-padding: 12px 30px;
@@ -1051,7 +1051,7 @@
 }
 
 .share-button:hover {
-    -fx-background-color: linear-gradient(135deg, #B39DDB 0%, #9575CD 100%);
+    -fx-background-color: linear-gradient(to bottom right, #B39DDB, #9575CD);
     -fx-effect: dropshadow(gaussian, rgba(149, 117, 205, 0.7), 25, 0, 0, 0);
 }
 
