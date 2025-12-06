@@ -25,13 +25,14 @@ public class GoogleAuthService {
     // OAuth2 endpoints
     private static final String GOOGLE_AUTH_URI = "https://accounts.google.com/o/oauth2/v2/auth";
     private static final String GOOGLE_TOKEN_URI = "https://oauth2.googleapis.com/token";
-    private static final String GOOGLE_REDIRECT_URI = "http://localhost:8080/oauth2callback";
+    private static final String DEFAULT_REDIRECT_URI = "http://localhost:8080/oauth2callback";
     
     // Gmail OAuth2 scope
     private static final String GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
     
     private String clientId;
     private String clientSecret;
+    private String redirectUri;
     private String accessToken;
     private String refreshToken;
     private long tokenExpiryTime;
@@ -43,6 +44,10 @@ public class GoogleAuthService {
         // Load credentials from environment or config file
         this.clientId = System.getenv("GOOGLE_CLIENT_ID");
         this.clientSecret = System.getenv("GOOGLE_CLIENT_SECRET");
+        this.redirectUri = System.getenv("GOOGLE_REDIRECT_URI");
+        if (this.redirectUri == null || this.redirectUri.isEmpty()) {
+            this.redirectUri = DEFAULT_REDIRECT_URI;
+        }
     }
     
     /**
@@ -55,6 +60,16 @@ public class GoogleAuthService {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
         LOGGER.info("Google OAuth2 credentials configured");
+    }
+    
+    /**
+     * Set the OAuth2 redirect URI
+     * 
+     * @param redirectUri The redirect URI to use for OAuth2 callbacks
+     */
+    public void setRedirectUri(String redirectUri) {
+        this.redirectUri = redirectUri;
+        LOGGER.info("OAuth2 redirect URI configured: " + redirectUri);
     }
     
     /**
@@ -71,7 +86,7 @@ public class GoogleAuthService {
         // Build authorization URL
         StringBuilder url = new StringBuilder(GOOGLE_AUTH_URI);
         url.append("?client_id=").append(clientId);
-        url.append("&redirect_uri=").append(GOOGLE_REDIRECT_URI);
+        url.append("&redirect_uri=").append(redirectUri);
         url.append("&response_type=code");
         url.append("&scope=").append(GMAIL_SEND_SCOPE);
         url.append("&access_type=offline");

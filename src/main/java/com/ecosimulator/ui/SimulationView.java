@@ -350,7 +350,7 @@ public class SimulationView extends BorderPane {
         });
         
         Label zoomLabel = new Label("Zoom:");
-        zoomLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #666;");
+        zoomLabel.getStyleClass().add("zoom-label");
         
         controls.getChildren().addAll(zoomLabel, zoomOutBtn, resetZoomBtn, zoomInBtn);
         

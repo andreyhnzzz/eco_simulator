@@ -290,6 +290,12 @@
     -fx-effect: dropshadow(gaussian, rgba(0, 229, 255, 0.2), 10, 0, 0, 2);
 }
 
+.zoom-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: #E0E0E0;
+    -fx-font-weight: 600;
+}
+
 .zoom-button {
     -fx-background-color: linear-gradient(to bottom, rgba(0, 229, 255, 0.2), rgba(0, 229, 255, 0.15));
     -fx-background-radius: 8px;
