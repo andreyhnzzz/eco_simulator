@@ -77,6 +77,9 @@ public class SimulationView extends BorderPane {
     // Icons displayed on grid cells
     private ImageView[][] gridCellIcons;
     
+    // Mutation icon overlays displayed on grid cells
+    private ImageView[][] mutationIconOverlays;
+    
     // Track previous cell states for animations
     private CellType[][] previousGrid;
     private Map<String, Timeline> mutationAnimations = new HashMap<>();
@@ -309,8 +312,52 @@ public class SimulationView extends BorderPane {
         AnimationUtils.applyButtonHoverAnimation(button);
         return button;
     }
+    
+    private HBox createZoomControls(GridPane grid) {
+        HBox controls = new HBox(10);
+        controls.setAlignment(Pos.CENTER);
+        controls.setPadding(new Insets(5));
+        controls.getStyleClass().add("zoom-controls");
+        
+        Button zoomInBtn = new Button("🔍+");
+        zoomInBtn.getStyleClass().addAll("zoom-button");
+        zoomInBtn.setTooltip(new Tooltip("Zoom In"));
+        zoomInBtn.setOnAction(e -> {
+            double currentScale = grid.getScaleX();
+            if (currentScale < 3.0) {
+                grid.setScaleX(currentScale * 1.2);
+                grid.setScaleY(currentScale * 1.2);
+            }
+        });
+        
+        Button zoomOutBtn = new Button("🔍-");
+        zoomOutBtn.getStyleClass().addAll("zoom-button");
+        zoomOutBtn.setTooltip(new Tooltip("Zoom Out"));
+        zoomOutBtn.setOnAction(e -> {
+            double currentScale = grid.getScaleX();
+            if (currentScale > 0.5) {
+                grid.setScaleX(currentScale / 1.2);
+                grid.setScaleY(currentScale / 1.2);
+            }
+        });
+        
+        Button resetZoomBtn = new Button("⊙");
+        resetZoomBtn.getStyleClass().addAll("zoom-button");
+        resetZoomBtn.setTooltip(new Tooltip("Reset Zoom"));
+        resetZoomBtn.setOnAction(e -> {
+            grid.setScaleX(1.0);
+            grid.setScaleY(1.0);
+        });
+        
+        Label zoomLabel = new Label("Zoom:");
+        zoomLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #666;");
+        
+        controls.getChildren().addAll(zoomLabel, zoomOutBtn, resetZoomBtn, zoomInBtn);
+        
+        return controls;
+    }
 
-    private ScrollPane createGridPanel() {
+    private Pane createGridPanel() {
         gridPane = new GridPane();
         gridPane.setHgap(1);
         gridPane.setVgap(1);
@@ -321,6 +368,7 @@ public class SimulationView extends BorderPane {
         gridCells = new Rectangle[DEFAULT_GRID_SIZE][DEFAULT_GRID_SIZE];
         gridCellContainers = new StackPane[DEFAULT_GRID_SIZE][DEFAULT_GRID_SIZE];
         gridCellIcons = new ImageView[DEFAULT_GRID_SIZE][DEFAULT_GRID_SIZE];
+        mutationIconOverlays = new ImageView[DEFAULT_GRID_SIZE][DEFAULT_GRID_SIZE];
         
         for (int i = 0; i < DEFAULT_GRID_SIZE; i++) {
             for (int j = 0; j < DEFAULT_GRID_SIZE; j++) {
@@ -349,11 +397,21 @@ public class SimulationView extends BorderPane {
         gridContainer.setPadding(new Insets(10));
         
         ScrollPane scrollPane = new ScrollPane(gridContainer);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setFitToHeight(true);
+        scrollPane.setFitToWidth(false);
+        scrollPane.setFitToHeight(false);
         scrollPane.getStyleClass().add("grid-scroll");
+        scrollPane.setPannable(true);
         
-        return scrollPane;
+        // Add zoom controls
+        BorderPane gridWithControls = new BorderPane();
+        gridWithControls.setCenter(scrollPane);
+        
+        HBox zoomControls = createZoomControls(gridPane);
+        BorderPane.setAlignment(zoomControls, Pos.CENTER);
+        BorderPane.setMargin(zoomControls, new Insets(10, 0, 0, 0));
+        gridWithControls.setBottom(zoomControls);
+        
+        return gridWithControls;
     }
 
     private VBox createStatsPanel() {
@@ -650,7 +708,7 @@ public class SimulationView extends BorderPane {
                         cell.setFill(color);
                     }
                     
-                    // Handle mutation glow
+                    // Handle mutation glow and icon overlay
                     if (isMutated && !mutationAnimations.containsKey(posKey)) {
                         Glow glow = new Glow(0.6);
                         DropShadow shadow = new DropShadow();
@@ -668,6 +726,9 @@ public class SimulationView extends BorderPane {
                         pulseTimeline.setCycleCount(Animation.INDEFINITE);
                         pulseTimeline.play();
                         mutationAnimations.put(posKey, pulseTimeline);
+                        
+                        // Add mutation icon overlay
+                        addMutationIconOverlay(i, j, container);
                     } else if (!isMutated) {
                         Timeline existingAnimation = mutationAnimations.remove(posKey);
                         if (existingAnimation != null) {
@@ -676,6 +737,9 @@ public class SimulationView extends BorderPane {
                         if (prevType == cellType) {
                             cell.setEffect(null);
                         }
+                        
+                        // Remove mutation icon overlay
+                        removeMutationIconOverlay(i, j, container);
                     }
                     
                     previousGrid[i][j] = cellType;
@@ -748,6 +812,37 @@ public class SimulationView extends BorderPane {
             case EMPTY:
             default:
                 return null; // No icon for empty cells
+        }
+    }
+    
+    /**
+     * Adds a mutation icon overlay to a mutated creature cell
+     */
+    private void addMutationIconOverlay(int row, int col, StackPane container) {
+        // Check if mutation overlay already exists
+        if (mutationIconOverlays[row][col] != null) {
+            return;
+        }
+        
+        ImageView mutationIcon = IconManager.getMutationIcon(CELL_SIZE / 2);
+        if (mutationIcon != null) {
+            mutationIcon.setPreserveRatio(true);
+            mutationIcon.setSmooth(true);
+            // Position in top-right corner
+            StackPane.setAlignment(mutationIcon, Pos.TOP_RIGHT);
+            mutationIconOverlays[row][col] = mutationIcon;
+            container.getChildren().add(mutationIcon);
+        }
+    }
+    
+    /**
+     * Removes the mutation icon overlay from a cell
+     */
+    private void removeMutationIconOverlay(int row, int col, StackPane container) {
+        ImageView existingOverlay = mutationIconOverlays[row][col];
+        if (existingOverlay != null) {
+            container.getChildren().remove(existingOverlay);
+            mutationIconOverlays[row][col] = null;
         }
     }
     
