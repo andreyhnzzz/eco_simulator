@@ -248,7 +248,8 @@ public class SimulationPersistence implements AutoCloseable {
         return switch (cellType) {
             case PREDATOR -> 'P';
             case PREY -> 'R';
-            case THIRD_SPECIES -> 'T';
+            case THIRD_SPECIES -> 'S';
+            case CORPSE -> 'X';
             case EMPTY -> '.';
         };
     }
