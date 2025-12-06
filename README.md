@@ -76,7 +76,26 @@ src/main/java/com/ecosimulator/
 └── ui/
     ├── SimulationView.java      # JavaFX main view
     ├── LoginView.java           # Login/registration view
+    ├── IconManager.java         # Icon loading and caching
     └── SMTPSettingsController.java  # SMTP settings dialog
+
+src/main/resources/
+├── css/                       # Application stylesheets
+└── icons/                     # Creature and terrain icons (PNG format)
+    ├── corpse.png             # Dead creature icon
+    ├── femalepredator.png     # Female predator icon
+    ├── femaleprey.png         # Female prey icon
+    ├── mutation.png           # Mutation indicator icon
+    ├── predator.png           # Generic predator icon
+    ├── predator_female.png    # Female predator (alternate)
+    ├── predator_male.png      # Male predator icon
+    ├── prey.png               # Generic prey icon
+    ├── prey_female.png        # Female prey icon
+    ├── prey_male.png          # Male prey icon
+    ├── scavenger.png          # Scavenger (third species) icon
+    ├── scavenger_female.png   # Female scavenger icon
+    ├── scavenger_male.png     # Male scavenger icon
+    └── terrain.png            # Empty terrain icon
 ```
 
 ## Simulation Rules
@@ -207,10 +226,10 @@ mvn test -Dtest=EmailServiceTest
 
 - **JavaFX 21** - UI Framework
 - **Jakarta Mail (Angus Mail 2.0.3)** - Email sending
-- **Apache PDFBox 3.0.2** - PDF generation
-- **JFreeChart 1.5.4** - Chart generation
-- **JUnit 5** - Unit testing
-- **GreenMail 2.1.0** - Email testing (in-memory SMTP)
+- **Apache PDFBox 3.0.6** - PDF generation
+- **JFreeChart 1.5.6** - Chart generation
+- **JUnit 5.11.4** - Unit testing
+- **GreenMail 2.1.7** - Email testing (in-memory SMTP)
 
 ## Security Notes
 
