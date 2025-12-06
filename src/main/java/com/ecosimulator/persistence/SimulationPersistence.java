@@ -21,8 +21,9 @@ import java.util.logging.Logger;
  * Persistence class for saving simulation states to files.
  * Saves initial ecosystem configuration to ecosistema.txt
  * Saves all turn states to estado_turnos.txt
+ * Implements AutoCloseable for proper resource management.
  */
-public class SimulationPersistence {
+public class SimulationPersistence implements AutoCloseable {
     private static final Logger LOGGER = Logger.getLogger(SimulationPersistence.class.getName());
     
     private static final String ECOSISTEMA_FILE = "ecosistema.txt";
@@ -124,6 +125,7 @@ public class SimulationPersistence {
      */
     public void logTurnState(int turn, CellType[][] grid, SimulationStats stats, String events) {
         if (!initialized || turnWriter == null) {
+            LOGGER.warning("Turn log not initialized - cannot log turn " + turn);
             return;
         }
         

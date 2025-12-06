@@ -396,12 +396,16 @@ public class SimulationEngine {
     }
 
     public void stop() {
+        // Guard against multiple stop calls - only finalize if was running
+        boolean wasRunning = this.running;
         this.running = false;
         this.paused = false;
         
-        // Finalize turn log with results
-        persistence.finalizeTurnLog(stats, extinctionTurn);
-        persistence.close();
+        // Only finalize turn log if simulation was actually running
+        if (wasRunning) {
+            persistence.finalizeTurnLog(stats, extinctionTurn);
+            persistence.close();
+        }
     }
 
     public void reset() {
