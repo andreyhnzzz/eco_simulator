@@ -100,7 +100,8 @@ public class ResultsScreen extends StackPane {
         // Create main scrollable container
         ScrollPane scrollPane = new ScrollPane();
         scrollPane.setFitToWidth(true);
-        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         scrollPane.getStyleClass().add("results-scroll");
         
         mainContainer = new VBox(30);
@@ -699,15 +700,18 @@ public class ResultsScreen extends StackPane {
         Stage dialog = new Stage();
         dialog.initModality(Modality.APPLICATION_MODAL);
         dialog.initOwner(owner);
-        dialog.initStyle(StageStyle.UNDECORATED);
+        dialog.initStyle(StageStyle.DECORATED);
         dialog.setTitle("Simulation Results");
+        dialog.setResizable(true);
         
         ResultsScreen resultsScreen = new ResultsScreen(stats, gridSize, extinctionTurn, emailService);
         
-        Scene scene = new Scene(resultsScreen, 900, 700);
+        Scene scene = new Scene(resultsScreen, 950, 750);
         ThemeManager.applyCurrentTheme(scene);
         
         dialog.setScene(scene);
+        dialog.setMinWidth(700);
+        dialog.setMinHeight(600);
         dialog.centerOnScreen();
         
         // Play entrance animations after showing

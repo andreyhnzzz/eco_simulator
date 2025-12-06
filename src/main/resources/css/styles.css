@@ -254,6 +254,49 @@
     -fx-effect: dropshadow(gaussian, rgba(76, 175, 80, 0.3), 8, 0, 0, 0);
 }
 
+/* Zoom Controls */
+.zoom-controls {
+    -fx-background-color: rgba(255, 255, 255, 0.8);
+    -fx-background-radius: 15px;
+    -fx-padding: 8px 16px;
+    -fx-border-color: rgba(76, 175, 80, 0.3);
+    -fx-border-radius: 15px;
+    -fx-border-width: 1px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 8, 0, 0, 2);
+}
+
+.zoom-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: #424242;
+    -fx-font-weight: 600;
+}
+
+.zoom-button {
+    -fx-background-color: linear-gradient(to bottom, #E8F5E9, #C8E6C9);
+    -fx-background-radius: 8px;
+    -fx-padding: 8px 12px;
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-cursor: hand;
+    -fx-border-color: rgba(76, 175, 80, 0.4);
+    -fx-border-radius: 8px;
+    -fx-border-width: 1px;
+    -fx-text-fill: #2E7D32;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 4, 0, 0, 2);
+}
+
+.zoom-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #C8E6C9, #A5D6A7);
+    -fx-effect: dropshadow(gaussian, rgba(76, 175, 80, 0.3), 8, 0, 0, 4);
+    -fx-translate-y: -1px;
+}
+
+.zoom-button:pressed {
+    -fx-background-color: linear-gradient(to bottom, #A5D6A7, #81C784);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.05), 2, 0, 0, 1);
+    -fx-translate-y: 1px;
+}
+
 /* ===========================
    FORM INPUTS - MODERN STYLE
    =========================== */
