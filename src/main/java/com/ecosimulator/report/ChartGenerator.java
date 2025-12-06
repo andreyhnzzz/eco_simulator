@@ -89,4 +89,35 @@ public class ChartGenerator {
 
         return chart.createBufferedImage(400, 300);
     }
+
+    /**
+     * Create a pie chart showing resource consumption
+     * @param waterConsumed total water consumed during simulation
+     * @param foodConsumed total food consumed during simulation
+     * @return BufferedImage containing the chart
+     */
+    public static BufferedImage createResourceConsumptionChart(int waterConsumed, int foodConsumed) {
+        DefaultPieDataset<String> dataset = new DefaultPieDataset<>();
+        dataset.setValue("Water Consumed", waterConsumed);
+        dataset.setValue("Food Consumed", foodConsumed);
+
+        JFreeChart chart = ChartFactory.createPieChart(
+            "Resource Consumption",
+            dataset,
+            true,
+            true,
+            false
+        );
+
+        chart.setBackgroundPaint(Color.WHITE);
+        PiePlot plot = (PiePlot) chart.getPlot();
+        plot.setBackgroundPaint(Color.WHITE);
+        plot.setOutlinePaint(null);
+        plot.setShadowPaint(null);
+        
+        plot.setSectionPaint("Water Consumed", new Color(0x21, 0x96, 0xF3)); // Blue
+        plot.setSectionPaint("Food Consumed", new Color(0x8B, 0xC3, 0x4A)); // Light green
+
+        return chart.createBufferedImage(400, 300);
+    }
 }

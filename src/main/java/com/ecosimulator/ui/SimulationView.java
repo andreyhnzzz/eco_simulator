@@ -56,6 +56,8 @@ public class SimulationView extends BorderPane {
     private Label thirdSpeciesLabel;
     private Label mutatedLabel;
     private Label corpseLabel;
+    private Label waterLabel;
+    private Label foodLabel;
     private Label statusLabel;
     private ProgressBar progressBar;
     private TextArea eventLogArea;
@@ -291,6 +293,10 @@ public class SimulationView extends BorderPane {
                 return "#FFAB40";
             case CORPSE:
                 return "#6A1B9A"; // Dark purple for corpses
+            case WATER:
+                return "#42A5F5"; // Bright blue for water
+            case FOOD:
+                return "#9CCC65"; // Light green for food
             case EMPTY:
             default:
                 return "#1B263B";
@@ -382,6 +388,12 @@ public class SimulationView extends BorderPane {
         corpseLabel = new Label("💀 Cadáveres: 0");
         corpseLabel.getStyleClass().addAll("stat-label", "stat-corpse");
 
+        waterLabel = new Label("💧 Agua: 0");
+        waterLabel.getStyleClass().addAll("stat-label", "stat-water");
+        
+        foodLabel = new Label("🍃 Comida: 0");
+        foodLabel.getStyleClass().addAll("stat-label", "stat-food");
+
         Separator sep2 = new Separator();
 
         Label legendTitle = new Label("📍 Leyenda");
@@ -395,6 +407,8 @@ public class SimulationView extends BorderPane {
             createLegendItemWithIcon(IconManager.FEMALE_PREY, "Presa ♀", "#1976D2"),
             createLegendItemWithIcon(IconManager.SCAVENGER, "Carroñero", "#FF9800"),
             createLegendItemWithIcon(IconManager.CORPSE, "Cadáver", "#4A148C"),
+            createLegendItemWithIcon(IconManager.WATER, "Agua", "#2196F3"),
+            createLegendItemWithIcon(IconManager.FOOD, "Comida", "#8BC34A"),
             createLegendItemWithIcon(IconManager.MUTATION, "Mutación", "#9C27B0")
         );
 
@@ -414,6 +428,7 @@ public class SimulationView extends BorderPane {
         panel.getChildren().addAll(
             statsTitle, turnLabel, sep1,
             predatorLabel, preyLabel, thirdSpeciesLabel, mutatedLabel, corpseLabel,
+            waterLabel, foodLabel,
             sep2, legendTitle, legendBox,
             sep3, logTitle, eventLogArea
         );
@@ -726,6 +741,10 @@ public class SimulationView extends BorderPane {
                 return IconManager.SCAVENGER;
             case CORPSE:
                 return IconManager.CORPSE;
+            case WATER:
+                return IconManager.WATER;
+            case FOOD:
+                return IconManager.FOOD;
             case EMPTY:
             default:
                 return null; // No icon for empty cells
@@ -796,6 +815,8 @@ public class SimulationView extends BorderPane {
                 stats.getThirdSpeciesCount(), stats.getThirdSpeciesMaleCount(), stats.getThirdSpeciesFemaleCount()));
             animateStatLabel(mutatedLabel, "🧬 Mutados: " + stats.getMutatedCount());
             animateStatLabel(corpseLabel, "💀 Cadáveres: " + stats.getCorpseCount());
+            animateStatLabel(waterLabel, "💧 Agua: " + stats.getWaterCount());
+            animateStatLabel(foodLabel, "🍃 Comida: " + stats.getFoodCount());
             
             // Update event log
             updateEventLog();

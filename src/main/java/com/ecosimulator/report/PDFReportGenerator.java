@@ -86,6 +86,10 @@ public class PDFReportGenerator {
                     "Final Third Species Count: " + stats.getThirdSpeciesCount(),
                     "Mutated Creatures: " + stats.getMutatedCount(),
                     "Total Creatures: " + stats.getTotalCreatures(),
+                    "Water Sources: " + stats.getWaterCount(),
+                    "Food Sources: " + stats.getFoodCount(),
+                    "Total Water Consumed: " + stats.getTotalWaterConsumed(),
+                    "Total Food Consumed: " + stats.getTotalFoodConsumed(),
                     extinctionTurn > 0 ? "Extinction Turn: " + extinctionTurn : "No Extinction",
                     "Result: " + stats.getWinner()
                 };
@@ -136,6 +140,27 @@ public class PDFReportGenerator {
                 PDImageXObject occupancyImage = LosslessFactory.createFromImage(document, occupancyChart);
                 
                 contentStream.drawImage(occupancyImage, imageX, yPosition - imageHeight, imageWidth, imageHeight);
+                yPosition -= (imageHeight + 30);
+
+                // Resource Consumption Chart (if resources were consumed)
+                if (stats.getTotalWaterConsumed() > 0 || stats.getTotalFoodConsumed() > 0) {
+                    BufferedImage resourceChart = ChartGenerator.createResourceConsumptionChart(
+                        stats.getTotalWaterConsumed(), stats.getTotalFoodConsumed());
+                    PDImageXObject resourceImage = LosslessFactory.createFromImage(document, resourceChart);
+                    
+                    // Add new page if needed
+                    if (yPosition < imageHeight + MARGIN) {
+                        PDPage newPage = new PDPage(PDRectangle.A4);
+                        document.addPage(newPage);
+                        yPosition = newPage.getMediaBox().getHeight() - MARGIN;
+                        
+                        try (PDPageContentStream newContentStream = new PDPageContentStream(document, newPage)) {
+                            newContentStream.drawImage(resourceImage, imageX, yPosition - imageHeight, imageWidth, imageHeight);
+                        }
+                    } else {
+                        contentStream.drawImage(resourceImage, imageX, yPosition - imageHeight, imageWidth, imageHeight);
+                    }
+                }
             }
 
             document.save(outputPath);
@@ -204,6 +229,12 @@ public class PDFReportGenerator {
                     "  - Third Species: " + stats.getThirdSpeciesCount(),
                     "  - Mutated: " + stats.getMutatedCount(),
                     "  - Total: " + stats.getTotalCreatures(),
+                    "",
+                    "Resources:",
+                    "  - Water Sources: " + stats.getWaterCount(),
+                    "  - Food Sources: " + stats.getFoodCount(),
+                    "  - Water Consumed: " + stats.getTotalWaterConsumed(),
+                    "  - Food Consumed: " + stats.getTotalFoodConsumed(),
                     "",
                     String.format("Ecosystem Occupancy: %.1f%%", occupancyPercent),
                     extinctionTurn > 0 ? "Extinction at Turn: " + extinctionTurn : "No Extinction Occurred",
