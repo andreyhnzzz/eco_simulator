@@ -213,13 +213,19 @@ public class SimulationView extends BorderPane {
             resetSimulation();
         });
 
+        Button compareButton = createAnimatedButton("📊 Comparar", "compare-button");
+        compareButton.setOnAction(e -> {
+            AnimationUtils.playButtonClickAnimation(compareButton);
+            showScenarioComparison();
+        });
+
         settingsButton = createAnimatedButton("⚙ Email", "settings-button");
         settingsButton.setOnAction(e -> {
             AnimationUtils.playButtonClickAnimation(settingsButton);
             openSmtpSettings();
         });
         
-        buttonBox.getChildren().addAll(startButton, pauseButton, resetButton, settingsButton);
+        buttonBox.getChildren().addAll(startButton, pauseButton, resetButton, compareButton, settingsButton);
 
         // Theme toggle button
         themeToggleButton = new Button(ThemeManager.getThemeToggleText());
@@ -779,8 +785,8 @@ public class SimulationView extends BorderPane {
 
             stopMutationAnimations();
             
-            // Calculate extinction turn
-            int extinctionTurn = (stats.getPredatorCount() == 0 || stats.getPreyCount() == 0) ? stats.getTurn() : -1;
+            // Get extinction turn from engine
+            int extinctionTurn = engine.getExtinctionTurn();
             
             // Show premium results screen
             if (getScene() != null && getScene().getWindow() instanceof Stage) {
@@ -853,6 +859,123 @@ public class SimulationView extends BorderPane {
     private void openSmtpSettings() {
         Stage stage = (Stage) getScene().getWindow();
         SMTPSettingsController.showDialog(stage, emailService);
+    }
+
+    /**
+     * Show the Scenario Comparison dialog with analysis of all scenarios
+     */
+    private void showScenarioComparison() {
+        if (runner != null && runner.isRunning()) {
+            showNotification("Simulation Running", 
+                "Please stop the current simulation before running comparison.", 
+                Alert.AlertType.WARNING);
+            return;
+        }
+
+        statusLabel.setText("⏳ Running scenario comparison...");
+        
+        // Run comparison in background thread to avoid UI freeze
+        new Thread(() -> {
+            try {
+                // Run comparison simulations (50 turns each, 15x15 grid for speed)
+                ScenarioComparison.ComparisonAnalysis analysis = 
+                    ScenarioComparison.runComparisonSimulations(15, 50);
+                
+                // Update UI on JavaFX thread
+                Platform.runLater(() -> {
+                    statusLabel.setText("✅ Comparison complete");
+                    showComparisonResults(analysis);
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    statusLabel.setText("❌ Comparison failed");
+                    showNotification("Error", "Failed to run comparison: " + e.getMessage(), 
+                        Alert.AlertType.ERROR);
+                });
+                LOGGER.log(Level.WARNING, "Scenario comparison failed", e);
+            }
+        }).start();
+    }
+
+    /**
+     * Display the scenario comparison results in a dialog
+     */
+    private void showComparisonResults(ScenarioComparison.ComparisonAnalysis analysis) {
+        Stage dialog = new Stage();
+        dialog.initOwner((Stage) getScene().getWindow());
+        dialog.setTitle("📊 Scenario Comparison Results");
+
+        VBox root = new VBox(15);
+        root.setPadding(new Insets(20));
+        root.setAlignment(Pos.TOP_CENTER);
+
+        // Title
+        Label titleLabel = new Label("🔬 Scenario Comparison Analysis");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+
+        // Summary table
+        Label tableTitle = new Label("📋 Results Summary");
+        tableTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+
+        TextArea summaryTable = new TextArea(ScenarioComparison.generateSummaryTable(analysis));
+        summaryTable.setEditable(false);
+        summaryTable.setPrefRowCount(15);
+        summaryTable.setStyle("-fx-font-family: monospace; -fx-font-size: 12px;");
+
+        // Detailed analysis
+        Label analysisTitle = new Label("📈 Detailed Analysis");
+        analysisTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+
+        TextArea analysisArea = new TextArea(analysis.getAnalysisReport());
+        analysisArea.setEditable(false);
+        analysisArea.setPrefRowCount(20);
+        analysisArea.setWrapText(true);
+        analysisArea.setStyle("-fx-font-family: monospace; -fx-font-size: 11px;");
+
+        // Key findings
+        VBox findingsBox = new VBox(8);
+        findingsBox.setAlignment(Pos.CENTER_LEFT);
+        Label findingsTitle = new Label("🏆 Key Findings");
+        findingsTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+
+        if (analysis.getMostStable() != null) {
+            Label mostStable = new Label("• Most Stable: " + analysis.getMostStable().getConfigDescription());
+            mostStable.setStyle("-fx-text-fill: #4CAF50; -fx-font-size: 13px;");
+            findingsBox.getChildren().add(mostStable);
+        }
+        if (analysis.getHighestOccupancy() != null) {
+            Label highest = new Label("• Highest Occupancy: " + analysis.getHighestOccupancy().getConfigDescription() +
+                " (" + analysis.getHighestOccupancy().getTotalOccupancy() + " creatures)");
+            highest.setStyle("-fx-text-fill: #2196F3; -fx-font-size: 13px;");
+            findingsBox.getChildren().add(highest);
+        }
+        if (analysis.getFastestExtinction() != null) {
+            Label fastest = new Label("• Fastest Extinction: " + analysis.getFastestExtinction().getConfigDescription() +
+                " (turn " + analysis.getFastestExtinction().getExtinctionTurn() + ")");
+            fastest.setStyle("-fx-text-fill: #F44336; -fx-font-size: 13px;");
+            findingsBox.getChildren().add(fastest);
+        }
+
+        // Close button
+        Button closeButton = new Button("Close");
+        closeButton.setOnAction(e -> dialog.close());
+        closeButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-padding: 8 20;");
+
+        ScrollPane scrollPane = new ScrollPane();
+        VBox content = new VBox(15, titleLabel, findingsTitle, findingsBox, 
+                                new Separator(), tableTitle, summaryTable,
+                                new Separator(), analysisTitle, analysisArea);
+        content.setPadding(new Insets(10));
+        scrollPane.setContent(content);
+        scrollPane.setFitToWidth(true);
+
+        root.getChildren().addAll(scrollPane, closeButton);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        javafx.scene.Scene scene = new javafx.scene.Scene(root, 700, 600);
+        ThemeManager.applyCurrentTheme(scene);
+        dialog.setScene(scene);
+        dialog.show();
     }
 
     private void applyStyles() {
