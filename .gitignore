@@ -54,3 +54,7 @@ outgoing_reports/
 
 # Generated reports
 reports/
+
+# Ecosystem state files (generated during simulation)
+ecosistema.txt
+estado_turnos.txt

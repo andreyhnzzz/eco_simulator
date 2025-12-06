@@ -1,6 +1,7 @@
 package com.ecosimulator.simulation;
 
 import com.ecosimulator.model.*;
+import com.ecosimulator.persistence.SimulationPersistence;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -17,6 +18,13 @@ public class SimulationEngine {
     private final Random random;
     private boolean running;
     private boolean paused;
+    
+    // Persistence for saving ecosystem states to files
+    private final SimulationPersistence persistence;
+    private int extinctionTurn;
+    
+    // Event tracking for logging
+    private StringBuilder turnEvents;
 
     // Callbacks for UI updates
     private Runnable onGridUpdate;
@@ -32,6 +40,9 @@ public class SimulationEngine {
         this.random = new Random();
         this.running = false;
         this.paused = false;
+        this.persistence = new SimulationPersistence();
+        this.extinctionTurn = -1;
+        this.turnEvents = new StringBuilder();
         initializeGrid();
     }
 
@@ -125,6 +136,7 @@ public class SimulationEngine {
         if (!running || paused) return;
 
         stats.nextTurn();
+        turnEvents = new StringBuilder();
         List<Creature> newCreatures = new ArrayList<>();
         List<Creature> deadCreatures = new ArrayList<>();
 
@@ -142,6 +154,8 @@ public class SimulationEngine {
             if (creature.isDead()) {
                 deadCreatures.add(creature);
                 stats.recordDeath();
+                turnEvents.append(creature.getType().getDisplayName())
+                         .append(" died (starvation). ");
                 continue;
             }
 
@@ -154,6 +168,8 @@ public class SimulationEngine {
                 if (offspring != null) {
                     newCreatures.add(offspring);
                     stats.recordBirth();
+                    turnEvents.append(creature.getType().getDisplayName())
+                             .append(" reproduced. ");
                 }
             }
         }
@@ -177,6 +193,14 @@ public class SimulationEngine {
         }
 
         updateStats();
+        
+        // Log turn state to file
+        persistence.logTurnState(stats.getTurn(), grid, stats, turnEvents.toString());
+        
+        // Track extinction turn
+        if (extinctionTurn < 0 && stats.isExtinct()) {
+            extinctionTurn = stats.getTurn();
+        }
 
         if (onGridUpdate != null) onGridUpdate.run();
         if (onStatsUpdate != null) onStatsUpdate.run();
@@ -356,6 +380,11 @@ public class SimulationEngine {
     public void start() {
         this.running = true;
         this.paused = false;
+        this.extinctionTurn = -1;
+        
+        // Save initial ecosystem and initialize turn log
+        persistence.saveInitialEcosystem(grid, config, stats);
+        persistence.initializeTurnLog(config);
     }
 
     public void pause() {
@@ -367,12 +396,21 @@ public class SimulationEngine {
     }
 
     public void stop() {
+        // Guard against multiple stop calls - only finalize if was running
+        boolean wasRunning = this.running;
         this.running = false;
         this.paused = false;
+        
+        // Only finalize turn log if simulation was actually running
+        if (wasRunning) {
+            persistence.finalizeTurnLog(stats, extinctionTurn);
+            persistence.close();
+        }
     }
 
     public void reset() {
         stop();
+        this.extinctionTurn = -1;
         initializeGrid();
     }
 
@@ -385,6 +423,7 @@ public class SimulationEngine {
     public List<Creature> getCreatures() { return creatures; }
     public SimulationStats getStats() { return stats; }
     public SimulationConfig getConfig() { return config; }
+    public int getExtinctionTurn() { return extinctionTurn; }
 
     // Callback setters
     public void setOnGridUpdate(Runnable callback) { this.onGridUpdate = callback; }
