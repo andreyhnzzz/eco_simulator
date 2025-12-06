@@ -1,5 +1,7 @@
 package com.ecosimulator.ui;
 
+import com.ecosimulator.model.CellType;
+import com.ecosimulator.model.Sex;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 
@@ -12,6 +14,7 @@ import java.util.logging.Logger;
 /**
  * Icon Manager for loading and caching icons used throughout the application
  * Provides icons for predators, prey, mutations, scavengers, terrain, etc.
+ * Supports sex-specific icons for creatures.
  */
 public class IconManager {
     
@@ -28,6 +31,15 @@ public class IconManager {
     public static final String MUTATION = "mutation";
     public static final String SCAVENGER = "scavenger";
     public static final String TERRAIN = "terrain";
+    public static final String CORPSE = "corpse";
+    
+    // Sex-specific icon naming convention
+    public static final String PREDATOR_MALE = "predator_male";
+    public static final String PREDATOR_FEMALE = "predator_female";
+    public static final String PREY_MALE = "prey_male";
+    public static final String PREY_FEMALE = "prey_female";
+    public static final String SCAVENGER_MALE = "scavenger_male";
+    public static final String SCAVENGER_FEMALE = "scavenger_female";
     
     // Cache for loaded images
     private static final Map<String, Image> imageCache = new HashMap<>();
@@ -46,7 +58,13 @@ public class IconManager {
      * Initialize and preload all icons into cache
      */
     public static void preloadIcons() {
-        String[] iconNames = {PREDATOR, PREY, FEMALE_PREDATOR, FEMALE_PREY, MUTATION, SCAVENGER, TERRAIN};
+        String[] iconNames = {
+            PREDATOR, PREY, FEMALE_PREDATOR, FEMALE_PREY, 
+            MUTATION, SCAVENGER, TERRAIN, CORPSE,
+            PREDATOR_MALE, PREDATOR_FEMALE,
+            PREY_MALE, PREY_FEMALE,
+            SCAVENGER_MALE, SCAVENGER_FEMALE
+        };
         for (String iconName : iconNames) {
             loadIcon(iconName);
         }
@@ -92,7 +110,7 @@ public class IconManager {
             }
         }
         
-        LOGGER.warning("Icon not found: " + iconName);
+        LOGGER.fine("Icon not found: " + iconName);
         return null;
     }
     
@@ -152,13 +170,51 @@ public class IconManager {
     }
     
     /**
+     * Get the icon name for a creature based on type and sex
+     * @param cellType the cell type (species)
+     * @param sex the sex of the creature
+     * @return the appropriate icon name
+     */
+    public static String getIconNameForCreature(CellType cellType, Sex sex) {
+        boolean isFemale = sex == Sex.FEMALE;
+        
+        return switch (cellType) {
+            case PREDATOR -> {
+                // Try sex-specific icon first, fallback to generic
+                String sexSpecific = isFemale ? PREDATOR_FEMALE : PREDATOR_MALE;
+                if (isIconAvailable(sexSpecific)) {
+                    yield sexSpecific;
+                }
+                // Fallback to legacy naming
+                yield isFemale ? FEMALE_PREDATOR : PREDATOR;
+            }
+            case PREY -> {
+                String sexSpecific = isFemale ? PREY_FEMALE : PREY_MALE;
+                if (isIconAvailable(sexSpecific)) {
+                    yield sexSpecific;
+                }
+                yield isFemale ? FEMALE_PREY : PREY;
+            }
+            case THIRD_SPECIES -> {
+                String sexSpecific = isFemale ? SCAVENGER_FEMALE : SCAVENGER_MALE;
+                if (isIconAvailable(sexSpecific)) {
+                    yield sexSpecific;
+                }
+                yield SCAVENGER;
+            }
+            case CORPSE -> CORPSE;
+            case EMPTY -> TERRAIN;
+        };
+    }
+    
+    /**
      * Get the predator icon view
      * @param size the size of the icon
      * @param isFemale whether to use the female variant
      * @return an ImageView with the predator icon
      */
     public static ImageView getPredatorIcon(int size, boolean isFemale) {
-        String iconName = isFemale ? FEMALE_PREDATOR : PREDATOR;
+        String iconName = getIconNameForCreature(CellType.PREDATOR, isFemale ? Sex.FEMALE : Sex.MALE);
         return getIconView(iconName, size);
     }
     
@@ -169,7 +225,18 @@ public class IconManager {
      * @return an ImageView with the prey icon
      */
     public static ImageView getPreyIcon(int size, boolean isFemale) {
-        String iconName = isFemale ? FEMALE_PREY : PREY;
+        String iconName = getIconNameForCreature(CellType.PREY, isFemale ? Sex.FEMALE : Sex.MALE);
+        return getIconView(iconName, size);
+    }
+    
+    /**
+     * Get the scavenger icon view with sex support
+     * @param size the size of the icon
+     * @param sex the sex of the scavenger
+     * @return an ImageView with the scavenger icon
+     */
+    public static ImageView getScavengerIcon(int size, Sex sex) {
+        String iconName = getIconNameForCreature(CellType.THIRD_SPECIES, sex);
         return getIconView(iconName, size);
     }
     
@@ -201,13 +268,22 @@ public class IconManager {
     }
     
     /**
+     * Get the corpse icon view
+     * @param size the size of the icon
+     * @return an ImageView with the corpse icon
+     */
+    public static ImageView getCorpseIcon(int size) {
+        return getIconView(CORPSE, size);
+    }
+    
+    /**
      * Check if an icon is available
      * @param iconName the name of the icon
      * @return true if the icon exists
      */
     public static boolean isIconAvailable(String iconName) {
         if (imageCache.containsKey(iconName)) {
-            return true;
+            return imageCache.get(iconName) != null;
         }
         return loadIcon(iconName) != null;
     }

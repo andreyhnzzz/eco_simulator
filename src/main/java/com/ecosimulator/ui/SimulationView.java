@@ -55,8 +55,10 @@ public class SimulationView extends BorderPane {
     private Label preyLabel;
     private Label thirdSpeciesLabel;
     private Label mutatedLabel;
+    private Label corpseLabel;
     private Label statusLabel;
     private ProgressBar progressBar;
+    private TextArea eventLogArea;
 
     // Simulation components
     private SimulationConfig config;
@@ -287,6 +289,8 @@ public class SimulationView extends BorderPane {
                 return "#448AFF";
             case THIRD_SPECIES:
                 return "#FFAB40";
+            case CORPSE:
+                return "#6A1B9A"; // Dark purple for corpses
             case EMPTY:
             default:
                 return "#1B263B";
@@ -347,11 +351,11 @@ public class SimulationView extends BorderPane {
     }
 
     private VBox createStatsPanel() {
-        VBox panel = new VBox(16);
-        panel.setPadding(new Insets(22));
+        VBox panel = new VBox(14);
+        panel.setPadding(new Insets(20));
         panel.setAlignment(Pos.TOP_CENTER);
-        panel.setPrefWidth(220);
-        panel.setMinWidth(200);
+        panel.setPrefWidth(240);
+        panel.setMinWidth(220);
         panel.getStyleClass().addAll("stats-panel", "glass-panel");
 
         Label statsTitle = new Label("📊 Estadísticas");
@@ -363,36 +367,55 @@ public class SimulationView extends BorderPane {
 
         Separator sep1 = new Separator();
 
-        predatorLabel = new Label("🐺 Depredadores: 0");
+        predatorLabel = new Label("🐺 Depredadores: 0 (♂0/♀0)");
         predatorLabel.getStyleClass().addAll("stat-label", "stat-predator");
         
-        preyLabel = new Label("🐰 Presas: 0");
+        preyLabel = new Label("🐰 Presas: 0 (♂0/♀0)");
         preyLabel.getStyleClass().addAll("stat-label", "stat-prey");
 
-        thirdSpeciesLabel = new Label("🦎 Tercer Especie: 0");
+        thirdSpeciesLabel = new Label("🦎 Carroñeros: 0 (♂0/♀0)");
         thirdSpeciesLabel.getStyleClass().addAll("stat-label", "stat-third-species");
 
         mutatedLabel = new Label("🧬 Mutados: 0");
         mutatedLabel.getStyleClass().addAll("stat-label", "stat-mutated");
+
+        corpseLabel = new Label("💀 Cadáveres: 0");
+        corpseLabel.getStyleClass().addAll("stat-label", "stat-corpse");
 
         Separator sep2 = new Separator();
 
         Label legendTitle = new Label("📍 Leyenda");
         legendTitle.getStyleClass().add("legend-title");
 
-        VBox legendBox = new VBox(10);
+        VBox legendBox = new VBox(8);
         legendBox.getChildren().addAll(
-            createLegendItemWithIcon(IconManager.PREDATOR, "Depredador", "#D32F2F"),
-            createLegendItemWithIcon(IconManager.PREY, "Presa", "#1976D2"),
-            createLegendItemWithIcon(IconManager.SCAVENGER, "Tercer Especie", "#FF9800"),
-            createLegendItemWithIcon(IconManager.TERRAIN, "Vacío", "#2E7D32"),
+            createLegendItemWithIcon(IconManager.PREDATOR, "Depredador ♂", "#D32F2F"),
+            createLegendItemWithIcon(IconManager.FEMALE_PREDATOR, "Depredador ♀", "#D32F2F"),
+            createLegendItemWithIcon(IconManager.PREY, "Presa ♂", "#1976D2"),
+            createLegendItemWithIcon(IconManager.FEMALE_PREY, "Presa ♀", "#1976D2"),
+            createLegendItemWithIcon(IconManager.SCAVENGER, "Carroñero", "#FF9800"),
+            createLegendItemWithIcon(IconManager.CORPSE, "Cadáver", "#4A148C"),
             createLegendItemWithIcon(IconManager.MUTATION, "Mutación", "#9C27B0")
         );
 
+        // Event log section
+        Separator sep3 = new Separator();
+        Label logTitle = new Label("📝 Eventos Recientes");
+        logTitle.getStyleClass().add("legend-title");
+        
+        eventLogArea = new TextArea();
+        eventLogArea.setEditable(false);
+        eventLogArea.setWrapText(true);
+        eventLogArea.setPrefRowCount(6);
+        eventLogArea.setMaxHeight(120);
+        eventLogArea.getStyleClass().add("event-log");
+        eventLogArea.setStyle("-fx-font-size: 10px; -fx-font-family: monospace;");
+
         panel.getChildren().addAll(
             statsTitle, turnLabel, sep1,
-            predatorLabel, preyLabel, thirdSpeciesLabel, mutatedLabel,
-            sep2, legendTitle, legendBox
+            predatorLabel, preyLabel, thirdSpeciesLabel, mutatedLabel, corpseLabel,
+            sep2, legendTitle, legendBox,
+            sep3, logTitle, eventLogArea
         );
 
         return panel;
@@ -647,7 +670,7 @@ public class SimulationView extends BorderPane {
     }
     
     /**
-     * Updates the icon displayed on a grid cell based on cell type
+     * Updates the icon displayed on a grid cell based on cell type and creature sex
      */
     private void updateCellIcon(int row, int col, CellType cellType, StackPane container) {
         // Remove existing icon if present
@@ -657,8 +680,8 @@ public class SimulationView extends BorderPane {
             gridCellIcons[row][col] = null;
         }
         
-        // Get appropriate icon for cell type
-        String iconName = getIconNameForCellType(cellType);
+        // Get appropriate icon for cell type (considering sex for living creatures)
+        String iconName = getIconNameForCell(row, col, cellType);
         if (iconName != null) {
             ImageView icon = IconManager.getIconView(iconName, CELL_SIZE - 4);
             if (icon != null) {
@@ -671,7 +694,27 @@ public class SimulationView extends BorderPane {
     }
     
     /**
-     * Returns the icon name for a given cell type
+     * Returns the icon name for a given cell position and type
+     * For living creatures, uses sex-specific icons
+     */
+    private String getIconNameForCell(int row, int col, CellType cellType) {
+        if (engine == null) {
+            return getIconNameForCellType(cellType);
+        }
+        
+        // For living creatures, get sex-specific icon
+        if (cellType.isLiving()) {
+            Creature creature = engine.getCreatureAt(row, col);
+            if (creature != null) {
+                return IconManager.getIconNameForCreature(cellType, creature.getSex());
+            }
+        }
+        
+        return getIconNameForCellType(cellType);
+    }
+    
+    /**
+     * Returns the default icon name for a given cell type (fallback)
      */
     private String getIconNameForCellType(CellType cellType) {
         switch (cellType) {
@@ -681,6 +724,8 @@ public class SimulationView extends BorderPane {
                 return IconManager.PREY;
             case THIRD_SPECIES:
                 return IconManager.SCAVENGER;
+            case CORPSE:
+                return IconManager.CORPSE;
             case EMPTY:
             default:
                 return null; // No icon for empty cells
@@ -741,10 +786,19 @@ public class SimulationView extends BorderPane {
             
             SimulationStats stats = engine.getStats();
             animateStatLabel(turnLabel, "Turno: " + stats.getTurn());
-            animateStatLabel(predatorLabel, "🐺 Depredadores: " + stats.getPredatorCount());
-            animateStatLabel(preyLabel, "🐰 Presas: " + stats.getPreyCount());
-            animateStatLabel(thirdSpeciesLabel, "🦎 Tercer Especie: " + stats.getThirdSpeciesCount());
+            
+            // Update with sex ratios
+            animateStatLabel(predatorLabel, String.format("🐺 Depredadores: %d (♂%d/♀%d)", 
+                stats.getPredatorCount(), stats.getPredatorMaleCount(), stats.getPredatorFemaleCount()));
+            animateStatLabel(preyLabel, String.format("🐰 Presas: %d (♂%d/♀%d)", 
+                stats.getPreyCount(), stats.getPreyMaleCount(), stats.getPreyFemaleCount()));
+            animateStatLabel(thirdSpeciesLabel, String.format("🦎 Carroñeros: %d (♂%d/♀%d)", 
+                stats.getThirdSpeciesCount(), stats.getThirdSpeciesMaleCount(), stats.getThirdSpeciesFemaleCount()));
             animateStatLabel(mutatedLabel, "🧬 Mutados: " + stats.getMutatedCount());
+            animateStatLabel(corpseLabel, "💀 Cadáveres: " + stats.getCorpseCount());
+            
+            // Update event log
+            updateEventLog();
             
             double progress = (double) stats.getTurn() / config.getMaxTurns();
             animateProgressBar(progress);
@@ -761,6 +815,25 @@ public class SimulationView extends BorderPane {
             pulse.setCycleCount(2);
             pulse.play();
         }
+    }
+    
+    /**
+     * Update the event log text area with recent events
+     */
+    private void updateEventLog() {
+        if (engine == null || eventLogArea == null) return;
+        
+        var eventLogger = engine.getEventLogger();
+        if (eventLogger == null) return;
+        
+        var recentEntries = eventLogger.getRecentEntries(10);
+        StringBuilder sb = new StringBuilder();
+        for (int i = recentEntries.size() - 1; i >= 0; i--) {
+            var entry = recentEntries.get(i);
+            sb.append(entry.toDisplayString()).append("\n");
+        }
+        eventLogArea.setText(sb.toString());
+        eventLogArea.setScrollTop(Double.MAX_VALUE);
     }
     
     private void animateProgressBar(double targetProgress) {
