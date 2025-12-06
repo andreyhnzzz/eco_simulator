@@ -62,11 +62,12 @@ public class IconManager {
     public static void preloadIcons() {
         String[] iconNames = {
             PREDATOR, PREY, FEMALE_PREDATOR, FEMALE_PREY, 
-            MUTATION, SCAVENGER, TERRAIN, CORPSE, WATER,
+            MUTATION, SCAVENGER, TERRAIN, CORPSE, WATER, FOOD,
             PREDATOR_MALE, PREDATOR_FEMALE,
             PREY_MALE, PREY_FEMALE,
             SCAVENGER_MALE, SCAVENGER_FEMALE
         };
+        // Note: FOOD currently maps to TERRAIN but is included for clarity
         for (String iconName : iconNames) {
             loadIcon(iconName);
         }
