@@ -18,6 +18,8 @@ public class SimulationEngine {
     private final List<Creature> creatures;
     private final Map<String, Creature> creaturePositionMap; // For O(1) lookup
     private final Map<String, Corpse> corpseMap; // Corpses on the grid
+    private final Map<String, Integer> waterPositions; // Track water positions
+    private final Map<String, Integer> foodPositions; // Track food positions
     private final SimulationStats stats;
     private final Random random;
     private boolean running;
@@ -43,6 +45,8 @@ public class SimulationEngine {
         this.creatures = new CopyOnWriteArrayList<>();
         this.creaturePositionMap = new ConcurrentHashMap<>();
         this.corpseMap = new ConcurrentHashMap<>();
+        this.waterPositions = new ConcurrentHashMap<>();
+        this.foodPositions = new ConcurrentHashMap<>();
         this.stats = new SimulationStats();
         this.random = new Random();
         this.running = false;
@@ -69,6 +73,8 @@ public class SimulationEngine {
         creatures.clear();
         creaturePositionMap.clear();
         corpseMap.clear();
+        waterPositions.clear();
+        foodPositions.clear();
         stats.reset();
         eventLogger.clear();
         int size = config.getGridSize();
@@ -85,6 +91,10 @@ public class SimulationEngine {
         int predatorCount = (int) (totalCells * config.getPredatorPercentage());
         int preyCount = (int) (totalCells * config.getPreyPercentage());
         int thirdSpeciesCount = (int) (totalCells * config.getThirdSpeciesPercentage());
+        
+        // Calculate resource counts (water and food)
+        int waterCount = (int) (totalCells * 0.08); // 8% water sources
+        int foodCount = (int) (totalCells * 0.12);  // 12% food sources
 
         // Create list of all positions and shuffle
         List<int[]> positions = new ArrayList<>();
@@ -96,6 +106,20 @@ public class SimulationEngine {
         Collections.shuffle(positions, random);
 
         int posIndex = 0;
+        
+        // Place water sources first
+        for (int i = 0; i < waterCount && posIndex < positions.size(); i++) {
+            int[] pos = positions.get(posIndex++);
+            grid[pos[0]][pos[1]] = CellType.WATER;
+            waterPositions.put(positionKey(pos[0], pos[1]), 1);
+        }
+        
+        // Place food sources
+        for (int i = 0; i < foodCount && posIndex < positions.size(); i++) {
+            int[] pos = positions.get(posIndex++);
+            grid[pos[0]][pos[1]] = CellType.FOOD;
+            foodPositions.put(positionKey(pos[0], pos[1]), 1);
+        }
 
         // Place predators with random sex
         for (int i = 0; i < predatorCount && posIndex < positions.size(); i++) {
@@ -163,15 +187,25 @@ public class SimulationEngine {
         for (Creature creature : shuffled) {
             if (creature.isDead() || deadCreatures.contains(creature)) continue;
 
-            // Age the creature (also decreases mating cooldown)
+            // Age the creature (also decreases mating cooldown, increases hunger/thirst)
             creature.age();
 
-            // Check if creature died of old age/starvation
+            // Check if creature died
             if (creature.isDead()) {
                 deadCreatures.add(creature);
                 stats.recordDeath();
-                eventLogger.logDeathByStarvation(stats.getTurn(), creature);
-                turnEvents.append(creature.getIdString()).append(" died (starvation). ");
+                
+                // Determine cause of death
+                if (creature.isDyingFromThirst()) {
+                    eventLogger.logDeathByThirst(stats.getTurn(), creature);
+                    turnEvents.append(creature.getIdString()).append(" died (thirst). ");
+                } else if (creature.isDyingFromHunger()) {
+                    eventLogger.logDeathByHunger(stats.getTurn(), creature);
+                    turnEvents.append(creature.getIdString()).append(" died (hunger). ");
+                } else {
+                    eventLogger.logDeathByStarvation(stats.getTurn(), creature);
+                    turnEvents.append(creature.getIdString()).append(" died (starvation). ");
+                }
                 continue;
             }
 
@@ -273,21 +307,42 @@ public class SimulationEngine {
         List<int[]> neighbors = getNeighbors(row, col);
         Collections.shuffle(neighbors, random);
 
-        // Scavengers (THIRD_SPECIES) prioritize corpses
-        if (creature.getType() == CellType.THIRD_SPECIES) {
-            if (processScavengerAction(creature, neighbors, consumedCorpses)) {
-                return; // Scavenger found and ate a corpse
+        // Priority 1: Check if creature is critically thirsty (>70) - seek water immediately
+        if (creature.getThirst() > 70) {
+            if (seekAndConsumeResource(creature, neighbors, CellType.WATER, row, col)) {
+                return;
             }
         }
 
-        CellType targetType = getTargetType(creature.getType());
+        // Priority 2: Check if creature is critically hungry (>70) - seek food
+        if (creature.getHunger() > 70) {
+            // Predators hunt prey when hungry
+            if (creature.getType() == CellType.PREDATOR) {
+                if (huntPrey(creature, neighbors, deadCreatures, row, col)) {
+                    return;
+                }
+            }
+            // Prey and scavengers seek food resources
+            else if (creature.getType() == CellType.PREY) {
+                if (seekAndConsumeResource(creature, neighbors, CellType.FOOD, row, col)) {
+                    return;
+                }
+            }
+        }
 
-        // Look for food (living prey for predators)
+        // Priority 3: Scavengers prioritize corpses when not critically hungry/thirsty
+        if (creature.getType() == CellType.THIRD_SPECIES) {
+            if (processScavengerAction(creature, neighbors, consumedCorpses)) {
+                return;
+            }
+        }
+
+        // Priority 4: Normal hunting/eating behavior
+        CellType targetType = getTargetType(creature.getType());
         if (targetType != null) {
             for (int[] neighbor : neighbors) {
                 CellType cellType = grid[neighbor[0]][neighbor[1]];
                 if (cellType == targetType) {
-                    // Hunt/eat
                     Creature prey = findCreatureAt(neighbor[0], neighbor[1]);
                     if (prey != null && !deadCreatures.contains(prey)) {
                         deadCreatures.add(prey);
@@ -295,14 +350,9 @@ public class SimulationEngine {
                         eventLogger.logDeathByPredation(stats.getTurn(), prey, creature);
                         creaturePositionMap.remove(positionKey(prey.getRow(), prey.getCol()));
                         
-                        // Move to prey's position and gain energy
-                        creaturePositionMap.remove(positionKey(row, col));
-                        grid[row][col] = CellType.EMPTY;
-                        creature.move(neighbor[0], neighbor[1]);
-                        grid[neighbor[0]][neighbor[1]] = creature.getType();
-                        creaturePositionMap.put(positionKey(neighbor[0], neighbor[1]), creature);
-                        // Energy gain adjusted by mutation bonus
+                        moveCreature(creature, neighbor[0], neighbor[1], row, col);
                         creature.eat((int)(5 * creature.getMutationBonus()));
+                        creature.eatFood(); // Also reduces hunger
                         turnEvents.append(creature.getIdString()).append(" hunted ")
                                  .append(prey.getIdString()).append(". ");
                         return;
@@ -311,28 +361,105 @@ public class SimulationEngine {
             }
         }
 
-        // If prey, eat vegetation (gain energy)
-        if (creature.getType() == CellType.PREY) {
-            creature.eat(3);
-        }
-
-        // Third species can get a small energy gain if no corpses found
-        if (creature.getType() == CellType.THIRD_SPECIES) {
-            creature.eat(1);
-        }
-
-        // Move to empty cell (or corpse cell for scavengers)
-        for (int[] neighbor : neighbors) {
-            CellType cellType = grid[neighbor[0]][neighbor[1]];
-            if (cellType == CellType.EMPTY) {
-                creaturePositionMap.remove(positionKey(row, col));
-                grid[row][col] = CellType.EMPTY;
-                creature.move(neighbor[0], neighbor[1]);
-                grid[neighbor[0]][neighbor[1]] = creature.getType();
-                creaturePositionMap.put(positionKey(neighbor[0], neighbor[1]), creature);
+        // Priority 5: Opportunistically consume nearby resources
+        if (creature.getThirst() > 30) {
+            if (seekAndConsumeResource(creature, neighbors, CellType.WATER, row, col)) {
                 return;
             }
         }
+        if (creature.getHunger() > 30 && creature.getType() == CellType.PREY) {
+            if (seekAndConsumeResource(creature, neighbors, CellType.FOOD, row, col)) {
+                return;
+            }
+        }
+
+        // Priority 6: Move to empty cell
+        for (int[] neighbor : neighbors) {
+            CellType cellType = grid[neighbor[0]][neighbor[1]];
+            if (cellType == CellType.EMPTY) {
+                moveCreature(creature, neighbor[0], neighbor[1], row, col);
+                return;
+            }
+        }
+    }
+
+    /**
+     * Seek and consume a resource (water or food)
+     */
+    private boolean seekAndConsumeResource(Creature creature, List<int[]> neighbors, 
+                                          CellType resourceType, int currentRow, int currentCol) {
+        for (int[] neighbor : neighbors) {
+            if (grid[neighbor[0]][neighbor[1]] == resourceType) {
+                // Move to resource and consume it
+                moveCreature(creature, neighbor[0], neighbor[1], currentRow, currentCol);
+                
+                if (resourceType == CellType.WATER) {
+                    creature.drink();
+                    stats.incrementWaterConsumed();
+                    eventLogger.logWaterConsumed(stats.getTurn(), creature);
+                    turnEvents.append(creature.getIdString()).append(" drank water. ");
+                    // Respawn water after consumption
+                    grid[neighbor[0]][neighbor[1]] = CellType.WATER;
+                } else if (resourceType == CellType.FOOD) {
+                    creature.eatFood();
+                    stats.incrementFoodConsumed();
+                    eventLogger.logFoodConsumed(stats.getTurn(), creature);
+                    turnEvents.append(creature.getIdString()).append(" ate food. ");
+                    // Respawn food after consumption
+                    grid[neighbor[0]][neighbor[1]] = CellType.FOOD;
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Hunt prey for predators
+     */
+    private boolean huntPrey(Creature predator, List<int[]> neighbors, 
+                            List<Creature> deadCreatures, int currentRow, int currentCol) {
+        for (int[] neighbor : neighbors) {
+            if (grid[neighbor[0]][neighbor[1]] == CellType.PREY) {
+                Creature prey = findCreatureAt(neighbor[0], neighbor[1]);
+                if (prey != null && !deadCreatures.contains(prey)) {
+                    deadCreatures.add(prey);
+                    stats.recordDeath();
+                    eventLogger.logDeathByPredation(stats.getTurn(), prey, predator);
+                    creaturePositionMap.remove(positionKey(prey.getRow(), prey.getCol()));
+                    
+                    moveCreature(predator, neighbor[0], neighbor[1], currentRow, currentCol);
+                    predator.eat((int)(5 * predator.getMutationBonus()));
+                    predator.eatFood(); // Hunting also reduces hunger significantly
+                    turnEvents.append(predator.getIdString()).append(" hunted ")
+                             .append(prey.getIdString()).append(". ");
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Move creature from current position to new position
+     */
+    private void moveCreature(Creature creature, int newRow, int newCol, int oldRow, int oldCol) {
+        CellType cellAtDestination = grid[newRow][newCol];
+        
+        creaturePositionMap.remove(positionKey(oldRow, oldCol));
+        
+        // Restore resource if creature was on one
+        if (waterPositions.containsKey(positionKey(oldRow, oldCol))) {
+            grid[oldRow][oldCol] = CellType.WATER;
+        } else if (foodPositions.containsKey(positionKey(oldRow, oldCol))) {
+            grid[oldRow][oldCol] = CellType.FOOD;
+        } else {
+            grid[oldRow][oldCol] = CellType.EMPTY;
+        }
+        
+        creature.move(newRow, newCol);
+        grid[newRow][newCol] = creature.getType();
+        creaturePositionMap.put(positionKey(newRow, newCol), creature);
     }
 
     /**
@@ -532,6 +659,8 @@ public class SimulationEngine {
         stats.setThirdSpeciesCount(third);
         stats.setMutatedCount(mutated);
         stats.setCorpseCount(corpseMap.size());
+        stats.setWaterCount(waterPositions.size());
+        stats.setFoodCount(foodPositions.size());
         
         // Update sex counts
         stats.setPredatorMaleCount(predatorMales);

@@ -25,9 +25,13 @@ public class EventLogger {
         DEATH_PREDATION("💀 Predation"),
         DEATH_STARVATION("💀 Starvation"),
         DEATH_OLD_AGE("💀 Old Age"),
+        DEATH_THIRST("💀 Thirst"),
+        DEATH_HUNGER("💀 Hunger"),
         SCAVENGING("🦴 Scavenging"),
         MUTATION_ACTIVATED("🧬 Mutation"),
-        CORPSE_DECAY("💨 Decay");
+        CORPSE_DECAY("💨 Decay"),
+        WATER_CONSUMED("💧 Drink"),
+        FOOD_CONSUMED("🍃 Eat");
 
         private final String displayName;
 
@@ -236,6 +240,60 @@ public class EventLogger {
         String message = String.format("💨 %s decayed",
             corpse.getIdString());
         addEntry(new LogEntry(turn, EventType.CORPSE_DECAY, message, null));
+    }
+
+    /**
+     * Log a death by thirst
+     */
+    public void logDeathByThirst(int turn, Creature creature) {
+        String message = String.format("💀 %s %s died of thirst",
+            creature.getType().getDisplayName(),
+            creature.getIdString());
+        String details = String.format("Species: %s, Sex: %s, Age: %d turns, Thirst: %d",
+            creature.getType().getDisplayName(),
+            creature.getSex().getDisplayName(),
+            creature.getAge(),
+            creature.getThirst());
+        addEntry(new LogEntry(turn, EventType.DEATH_THIRST, message, details));
+    }
+
+    /**
+     * Log a death by hunger
+     */
+    public void logDeathByHunger(int turn, Creature creature) {
+        String message = String.format("💀 %s %s died of hunger",
+            creature.getType().getDisplayName(),
+            creature.getIdString());
+        String details = String.format("Species: %s, Sex: %s, Age: %d turns, Hunger: %d",
+            creature.getType().getDisplayName(),
+            creature.getSex().getDisplayName(),
+            creature.getAge(),
+            creature.getHunger());
+        addEntry(new LogEntry(turn, EventType.DEATH_HUNGER, message, details));
+    }
+
+    /**
+     * Log water consumption
+     */
+    public void logWaterConsumed(int turn, Creature creature) {
+        String message = String.format("💧 %s %s drank water",
+            creature.getType().getDisplayName(),
+            creature.getIdString());
+        String details = String.format("Thirst reduced, Species: %s",
+            creature.getType().getDisplayName());
+        addEntry(new LogEntry(turn, EventType.WATER_CONSUMED, message, details));
+    }
+
+    /**
+     * Log food consumption
+     */
+    public void logFoodConsumed(int turn, Creature creature) {
+        String message = String.format("🍃 %s %s ate food",
+            creature.getType().getDisplayName(),
+            creature.getIdString());
+        String details = String.format("Hunger reduced, Species: %s",
+            creature.getType().getDisplayName());
+        addEntry(new LogEntry(turn, EventType.FOOD_CONSUMED, message, details));
     }
 
     /**

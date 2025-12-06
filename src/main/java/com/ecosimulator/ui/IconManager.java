@@ -32,6 +32,8 @@ public class IconManager {
     public static final String SCAVENGER = "scavenger";
     public static final String TERRAIN = "terrain";
     public static final String CORPSE = "corpse";
+    public static final String WATER = "water";
+    public static final String FOOD = "terrain"; // Using terrain icon for food
     
     // Sex-specific icon naming convention
     public static final String PREDATOR_MALE = "predator_male";
@@ -60,7 +62,7 @@ public class IconManager {
     public static void preloadIcons() {
         String[] iconNames = {
             PREDATOR, PREY, FEMALE_PREDATOR, FEMALE_PREY, 
-            MUTATION, SCAVENGER, TERRAIN, CORPSE,
+            MUTATION, SCAVENGER, TERRAIN, CORPSE, WATER,
             PREDATOR_MALE, PREDATOR_FEMALE,
             PREY_MALE, PREY_FEMALE,
             SCAVENGER_MALE, SCAVENGER_FEMALE
@@ -203,7 +205,10 @@ public class IconManager {
                 yield SCAVENGER;
             }
             case CORPSE -> CORPSE;
+            case WATER -> WATER;
+            case FOOD -> FOOD;
             case EMPTY -> TERRAIN;
+            default -> TERRAIN;
         };
     }
     

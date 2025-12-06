@@ -8,7 +8,9 @@ public enum CellType {
     PREDATOR("Predator", "P", "#D32F2F"),     // Red
     PREY("Prey", "R", "#1976D2"),              // Blue (Prey/Rabbit)
     THIRD_SPECIES("Scavenger", "S", "#FF9800"), // Orange (renamed from Third Species)
-    CORPSE("Corpse", "X", "#4A148C");         // Dark purple for corpses
+    CORPSE("Corpse", "X", "#4A148C"),         // Dark purple for corpses
+    WATER("Water", "W", "#2196F3"),           // Blue for water
+    FOOD("Food", "F", "#8BC34A");             // Light green for food/vegetation
 
     private final String displayName;
     private final String symbol;
@@ -37,5 +39,12 @@ public enum CellType {
      */
     public boolean isLiving() {
         return this == PREDATOR || this == PREY || this == THIRD_SPECIES;
+    }
+
+    /**
+     * Check if this cell type represents a resource (water or food)
+     */
+    public boolean isResource() {
+        return this == WATER || this == FOOD;
     }
 }

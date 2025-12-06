@@ -12,6 +12,10 @@ public class SimulationStats {
     private int birthsThisTurn;
     private int deathsThisTurn;
     private int corpseCount;
+    private int waterCount;
+    private int foodCount;
+    private int totalWaterConsumed;
+    private int totalFoodConsumed;
     
     // Sex counts per species
     private int predatorMaleCount;
@@ -39,6 +43,10 @@ public class SimulationStats {
         this.birthsThisTurn = 0;
         this.deathsThisTurn = 0;
         this.corpseCount = 0;
+        this.waterCount = 0;
+        this.foodCount = 0;
+        this.totalWaterConsumed = 0;
+        this.totalFoodConsumed = 0;
         
         // Reset sex counts
         this.predatorMaleCount = 0;
@@ -155,6 +163,18 @@ public class SimulationStats {
 
     public int getCorpseCount() { return corpseCount; }
     public void setCorpseCount(int count) { this.corpseCount = count; }
+
+    public int getWaterCount() { return waterCount; }
+    public void setWaterCount(int count) { this.waterCount = count; }
+
+    public int getFoodCount() { return foodCount; }
+    public void setFoodCount(int count) { this.foodCount = count; }
+
+    public int getTotalWaterConsumed() { return totalWaterConsumed; }
+    public void incrementWaterConsumed() { this.totalWaterConsumed++; }
+
+    public int getTotalFoodConsumed() { return totalFoodConsumed; }
+    public void incrementFoodConsumed() { this.totalFoodConsumed++; }
 
     // Sex count getters and setters
     public int getPredatorMaleCount() { return predatorMaleCount; }

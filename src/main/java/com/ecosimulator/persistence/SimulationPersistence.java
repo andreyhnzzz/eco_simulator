@@ -250,6 +250,8 @@ public class SimulationPersistence implements AutoCloseable {
             case PREY -> 'R';
             case THIRD_SPECIES -> 'S';
             case CORPSE -> 'X';
+            case WATER -> 'W';
+            case FOOD -> 'F';
             case EMPTY -> '.';
         };
     }

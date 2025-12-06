@@ -27,6 +27,8 @@ public class Creature {
     private double mutationBonus; // Speed/strength bonus from mutation
     private final Sex sex; // Immutable sex attribute
     private int matingCooldown; // Turns remaining before can mate again
+    private int hunger; // Hunger level (0-100, dies at 100)
+    private int thirst; // Thirst level (0-100, dies at 100)
 
     /**
      * Creates a new creature with randomly assigned sex
@@ -49,6 +51,8 @@ public class Creature {
         this.mutationBonus = 1.0;
         this.sex = sex;
         this.matingCooldown = 0;
+        this.hunger = 0; // Start with no hunger
+        this.thirst = 0; // Start with no thirst
     }
 
     private int getInitialEnergy(CellType type) {
@@ -73,14 +77,68 @@ public class Creature {
     public void age() {
         this.age++;
         this.energy -= 1;
+        // Increase hunger and thirst each turn
+        this.hunger += getHungerRate();
+        this.thirst += getThirstRate();
+        // Cap at 100
+        if (this.hunger > 100) this.hunger = 100;
+        if (this.thirst > 100) this.thirst = 100;
         // Decrease mating cooldown
         if (matingCooldown > 0) {
             matingCooldown--;
         }
     }
 
+    private int getHungerRate() {
+        // Predators get hungrier faster
+        return switch (type) {
+            case PREDATOR -> 15;
+            case PREY -> 10;
+            case THIRD_SPECIES -> 12;
+            default -> 10;
+        };
+    }
+
+    private int getThirstRate() {
+        // All creatures get thirsty at similar rates
+        return switch (type) {
+            case PREDATOR -> 12;
+            case PREY -> 10;
+            case THIRD_SPECIES -> 10;
+            default -> 10;
+        };
+    }
+
     public boolean isDead() {
-        return energy <= 0;
+        return energy <= 0 || hunger >= 100 || thirst >= 100;
+    }
+
+    /**
+     * Check if creature died from thirst
+     */
+    public boolean isDyingFromThirst() {
+        return thirst >= 100;
+    }
+
+    /**
+     * Check if creature died from hunger
+     */
+    public boolean isDyingFromHunger() {
+        return hunger >= 100;
+    }
+
+    /**
+     * Drink water to reduce thirst
+     */
+    public void drink() {
+        this.thirst = Math.max(0, this.thirst - 50);
+    }
+
+    /**
+     * Eat food to reduce hunger (for prey eating vegetation)
+     */
+    public void eatFood() {
+        this.hunger = Math.max(0, this.hunger - 40);
     }
 
     /**
@@ -148,6 +206,12 @@ public class Creature {
     public Sex getSex() { return sex; }
 
     public int getMatingCooldown() { return matingCooldown; }
+
+    public int getHunger() { return hunger; }
+    public void setHunger(int hunger) { this.hunger = hunger; }
+
+    public int getThirst() { return thirst; }
+    public void setThirst(int thirst) { this.thirst = thirst; }
 
     /**
      * Get the unique identifier string (e.g., "M-103" or "F-45")
