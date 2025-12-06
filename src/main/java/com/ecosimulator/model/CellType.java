@@ -4,10 +4,11 @@ package com.ecosimulator.model;
  * Represents the type of cell in the simulation grid
  */
 public enum CellType {
-    EMPTY("Empty", " ", "#2E7D32"),      // Forest green background
-    PREDATOR("Predator", "P", "#D32F2F"), // Red
-    PREY("Prey", "R", "#1976D2"),          // Blue (Prey/Rabbit)
-    THIRD_SPECIES("Third Species", "T", "#FF9800"); // Orange
+    EMPTY("Empty", " ", "#2E7D32"),           // Forest green background
+    PREDATOR("Predator", "P", "#D32F2F"),     // Red
+    PREY("Prey", "R", "#1976D2"),              // Blue (Prey/Rabbit)
+    THIRD_SPECIES("Scavenger", "S", "#FF9800"), // Orange (renamed from Third Species)
+    CORPSE("Corpse", "X", "#4A148C");         // Dark purple for corpses
 
     private final String displayName;
     private final String symbol;
@@ -29,5 +30,12 @@ public enum CellType {
 
     public String getColor() {
         return color;
+    }
+
+    /**
+     * Check if this cell type represents a living creature
+     */
+    public boolean isLiving() {
+        return this == PREDATOR || this == PREY || this == THIRD_SPECIES;
     }
 }

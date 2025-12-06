@@ -1,7 +1,7 @@
 package com.ecosimulator.model;
 
 /**
- * Statistics for the current simulation state
+ * Statistics for the current simulation state including sex ratios
  */
 public class SimulationStats {
     private int turn;
@@ -11,6 +11,20 @@ public class SimulationStats {
     private int mutatedCount;
     private int birthsThisTurn;
     private int deathsThisTurn;
+    private int corpseCount;
+    
+    // Sex counts per species
+    private int predatorMaleCount;
+    private int predatorFemaleCount;
+    private int preyMaleCount;
+    private int preyFemaleCount;
+    private int thirdSpeciesMaleCount;
+    private int thirdSpeciesFemaleCount;
+    
+    // Mutation status per species
+    private boolean predatorHasMutations;
+    private boolean preyHasMutations;
+    private boolean thirdSpeciesHasMutations;
 
     public SimulationStats() {
         reset();
@@ -24,6 +38,20 @@ public class SimulationStats {
         this.mutatedCount = 0;
         this.birthsThisTurn = 0;
         this.deathsThisTurn = 0;
+        this.corpseCount = 0;
+        
+        // Reset sex counts
+        this.predatorMaleCount = 0;
+        this.predatorFemaleCount = 0;
+        this.preyMaleCount = 0;
+        this.preyFemaleCount = 0;
+        this.thirdSpeciesMaleCount = 0;
+        this.thirdSpeciesFemaleCount = 0;
+        
+        // Reset mutation status
+        this.predatorHasMutations = false;
+        this.preyHasMutations = false;
+        this.thirdSpeciesHasMutations = false;
     }
 
     public void nextTurn() {
@@ -61,6 +89,51 @@ public class SimulationStats {
         return "Ongoing";
     }
 
+    /**
+     * Calculate dominance index for a species (0.0 to 1.0)
+     * Based on population, birth rate relative to total
+     */
+    public double getDominanceIndex(CellType species) {
+        int total = getTotalCreatures();
+        if (total == 0) return 0.0;
+        
+        int count = switch (species) {
+            case PREDATOR -> predatorCount;
+            case PREY -> preyCount;
+            case THIRD_SPECIES -> thirdSpeciesCount;
+            default -> 0;
+        };
+        
+        return (double) count / total;
+    }
+
+    /**
+     * Get sex ratio for a species (male / total)
+     * Returns 0.5 if no creatures of that species
+     */
+    public double getSexRatio(CellType species) {
+        int males;
+        int total;
+        switch (species) {
+            case PREDATOR -> {
+                males = predatorMaleCount;
+                total = predatorCount;
+            }
+            case PREY -> {
+                males = preyMaleCount;
+                total = preyCount;
+            }
+            case THIRD_SPECIES -> {
+                males = thirdSpeciesMaleCount;
+                total = thirdSpeciesCount;
+            }
+            default -> {
+                return 0.5;
+            }
+        }
+        return total > 0 ? (double) males / total : 0.5;
+    }
+
     // Getters and Setters
     public int getTurn() { return turn; }
     public void setTurn(int turn) { this.turn = turn; }
@@ -80,9 +153,45 @@ public class SimulationStats {
     public int getBirthsThisTurn() { return birthsThisTurn; }
     public int getDeathsThisTurn() { return deathsThisTurn; }
 
+    public int getCorpseCount() { return corpseCount; }
+    public void setCorpseCount(int count) { this.corpseCount = count; }
+
+    // Sex count getters and setters
+    public int getPredatorMaleCount() { return predatorMaleCount; }
+    public void setPredatorMaleCount(int count) { this.predatorMaleCount = count; }
+    
+    public int getPredatorFemaleCount() { return predatorFemaleCount; }
+    public void setPredatorFemaleCount(int count) { this.predatorFemaleCount = count; }
+    
+    public int getPreyMaleCount() { return preyMaleCount; }
+    public void setPreyMaleCount(int count) { this.preyMaleCount = count; }
+    
+    public int getPreyFemaleCount() { return preyFemaleCount; }
+    public void setPreyFemaleCount(int count) { this.preyFemaleCount = count; }
+    
+    public int getThirdSpeciesMaleCount() { return thirdSpeciesMaleCount; }
+    public void setThirdSpeciesMaleCount(int count) { this.thirdSpeciesMaleCount = count; }
+    
+    public int getThirdSpeciesFemaleCount() { return thirdSpeciesFemaleCount; }
+    public void setThirdSpeciesFemaleCount(int count) { this.thirdSpeciesFemaleCount = count; }
+
+    // Mutation status getters and setters
+    public boolean isPredatorHasMutations() { return predatorHasMutations; }
+    public void setPredatorHasMutations(boolean hasMutations) { this.predatorHasMutations = hasMutations; }
+    
+    public boolean isPreyHasMutations() { return preyHasMutations; }
+    public void setPreyHasMutations(boolean hasMutations) { this.preyHasMutations = hasMutations; }
+    
+    public boolean isThirdSpeciesHasMutations() { return thirdSpeciesHasMutations; }
+    public void setThirdSpeciesHasMutations(boolean hasMutations) { this.thirdSpeciesHasMutations = hasMutations; }
+
     @Override
     public String toString() {
-        return String.format("Turn %d: P=%d, R=%d, T=%d, M=%d", 
-            turn, predatorCount, preyCount, thirdSpeciesCount, mutatedCount);
+        return String.format("Turn %d: P=%d(M:%d/F:%d), R=%d(M:%d/F:%d), S=%d(M:%d/F:%d), Mut=%d, Corpses=%d", 
+            turn, 
+            predatorCount, predatorMaleCount, predatorFemaleCount,
+            preyCount, preyMaleCount, preyFemaleCount,
+            thirdSpeciesCount, thirdSpeciesMaleCount, thirdSpeciesFemaleCount,
+            mutatedCount, corpseCount);
     }
 }

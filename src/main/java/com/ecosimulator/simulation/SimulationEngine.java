@@ -2,18 +2,22 @@ package com.ecosimulator.simulation;
 
 import com.ecosimulator.model.*;
 import com.ecosimulator.persistence.SimulationPersistence;
+import com.ecosimulator.service.EventLogger;
+import com.ecosimulator.service.ReproductionManager;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Core simulation engine that manages the ecosystem grid and turn-based simulation
+ * Core simulation engine that manages the ecosystem grid and turn-based simulation.
+ * Features sex-based reproduction, corpse mechanics, and scavenging behavior.
  */
 public class SimulationEngine {
     private final SimulationConfig config;
     private final CellType[][] grid;
     private final List<Creature> creatures;
     private final Map<String, Creature> creaturePositionMap; // For O(1) lookup
+    private final Map<String, Corpse> corpseMap; // Corpses on the grid
     private final SimulationStats stats;
     private final Random random;
     private boolean running;
@@ -25,6 +29,8 @@ public class SimulationEngine {
     
     // Event tracking for logging
     private StringBuilder turnEvents;
+    private final EventLogger eventLogger;
+    private final ReproductionManager reproductionManager;
 
     // Callbacks for UI updates
     private Runnable onGridUpdate;
@@ -36,6 +42,7 @@ public class SimulationEngine {
         this.grid = new CellType[config.getGridSize()][config.getGridSize()];
         this.creatures = new CopyOnWriteArrayList<>();
         this.creaturePositionMap = new ConcurrentHashMap<>();
+        this.corpseMap = new ConcurrentHashMap<>();
         this.stats = new SimulationStats();
         this.random = new Random();
         this.running = false;
@@ -43,11 +50,13 @@ public class SimulationEngine {
         this.persistence = new SimulationPersistence();
         this.extinctionTurn = -1;
         this.turnEvents = new StringBuilder();
+        this.eventLogger = new EventLogger();
+        this.reproductionManager = new ReproductionManager(eventLogger);
         initializeGrid();
     }
 
     /**
-     * Get position key for the creature map
+     * Get position key for the creature/corpse map
      */
     private String positionKey(int row, int col) {
         return row + "," + col;
@@ -59,7 +68,9 @@ public class SimulationEngine {
     public void initializeGrid() {
         creatures.clear();
         creaturePositionMap.clear();
+        corpseMap.clear();
         stats.reset();
+        eventLogger.clear();
         int size = config.getGridSize();
         int totalCells = size * size;
 
@@ -86,7 +97,7 @@ public class SimulationEngine {
 
         int posIndex = 0;
 
-        // Place predators
+        // Place predators with random sex
         for (int i = 0; i < predatorCount && posIndex < positions.size(); i++) {
             int[] pos = positions.get(posIndex++);
             grid[pos[0]][pos[1]] = CellType.PREDATOR;
@@ -98,7 +109,7 @@ public class SimulationEngine {
             creaturePositionMap.put(positionKey(pos[0], pos[1]), creature);
         }
 
-        // Place prey
+        // Place prey with random sex
         for (int i = 0; i < preyCount && posIndex < positions.size(); i++) {
             int[] pos = positions.get(posIndex++);
             grid[pos[0]][pos[1]] = CellType.PREY;
@@ -110,7 +121,7 @@ public class SimulationEngine {
             creaturePositionMap.put(positionKey(pos[0], pos[1]), creature);
         }
 
-        // Place third species if enabled
+        // Place third species (scavengers) if enabled
         if (config.isThirdSpeciesEnabled()) {
             for (int i = 0; i < thirdSpeciesCount && posIndex < positions.size(); i++) {
                 int[] pos = positions.get(posIndex++);
@@ -136,9 +147,14 @@ public class SimulationEngine {
         if (!running || paused) return;
 
         stats.nextTurn();
+        reproductionManager.setCurrentTurn(stats.getTurn());
         turnEvents = new StringBuilder();
         List<Creature> newCreatures = new ArrayList<>();
         List<Creature> deadCreatures = new ArrayList<>();
+        List<Corpse> consumedCorpses = new ArrayList<>();
+
+        // Process corpse decay first
+        processCorpseDecay(consumedCorpses);
 
         // Shuffle creatures for random order processing
         List<Creature> shuffled = new ArrayList<>(creatures);
@@ -147,38 +163,44 @@ public class SimulationEngine {
         for (Creature creature : shuffled) {
             if (creature.isDead() || deadCreatures.contains(creature)) continue;
 
-            // Age the creature
+            // Age the creature (also decreases mating cooldown)
             creature.age();
 
             // Check if creature died of old age/starvation
             if (creature.isDead()) {
                 deadCreatures.add(creature);
                 stats.recordDeath();
-                turnEvents.append(creature.getType().getDisplayName())
-                         .append(" died (starvation). ");
+                eventLogger.logDeathByStarvation(stats.getTurn(), creature);
+                turnEvents.append(creature.getIdString()).append(" died (starvation). ");
                 continue;
             }
 
-            // Try to find food or move
-            processCreatureAction(creature, newCreatures, deadCreatures);
+            // Try to find food, scavenge, or move
+            processCreatureAction(creature, newCreatures, deadCreatures, consumedCorpses);
 
-            // Try to reproduce
-            if (creature.canReproduce() && !creature.isDead()) {
-                Creature offspring = tryReproduce(creature);
+            // Try to reproduce with sex-based mating
+            if (creature.canReproduce() && creature.isMature() && creature.canMate() && !creature.isDead()) {
+                Creature offspring = tryReproduce(creature, newCreatures);
                 if (offspring != null) {
                     newCreatures.add(offspring);
                     stats.recordBirth();
-                    turnEvents.append(creature.getType().getDisplayName())
-                             .append(" reproduced. ");
+                    turnEvents.append(creature.getIdString()).append(" reproduced → ")
+                             .append(offspring.getIdString()).append(". ");
                 }
             }
         }
 
-        // Remove dead creatures
+        // Create corpses from dead creatures
         for (Creature dead : deadCreatures) {
+            createCorpse(dead);
             creatures.remove(dead);
             creaturePositionMap.remove(positionKey(dead.getRow(), dead.getCol()));
-            grid[dead.getRow()][dead.getCol()] = CellType.EMPTY;
+        }
+
+        // Remove consumed corpses
+        for (Corpse corpse : consumedCorpses) {
+            corpseMap.remove(corpse.getPositionKey());
+            grid[corpse.getRow()][corpse.getCol()] = CellType.EMPTY;
         }
 
         // Add new creatures
@@ -213,55 +235,96 @@ public class SimulationEngine {
     }
 
     /**
-     * Process creature movement and hunting/eating
+     * Process corpse decay and removal
+     */
+    private void processCorpseDecay(List<Corpse> consumedCorpses) {
+        List<Corpse> decayedCorpses = new ArrayList<>();
+        for (Corpse corpse : corpseMap.values()) {
+            if (corpse.decay()) {
+                decayedCorpses.add(corpse);
+                eventLogger.logCorpseDecay(stats.getTurn(), corpse);
+            }
+        }
+        // Remove fully decayed corpses
+        for (Corpse corpse : decayedCorpses) {
+            corpseMap.remove(corpse.getPositionKey());
+            if (grid[corpse.getRow()][corpse.getCol()] == CellType.CORPSE) {
+                grid[corpse.getRow()][corpse.getCol()] = CellType.EMPTY;
+            }
+        }
+    }
+
+    /**
+     * Create a corpse from a dead creature
+     */
+    private void createCorpse(Creature dead) {
+        Corpse corpse = new Corpse(dead);
+        corpseMap.put(corpse.getPositionKey(), corpse);
+        grid[dead.getRow()][dead.getCol()] = CellType.CORPSE;
+    }
+
+    /**
+     * Process creature movement, hunting/eating, and scavenging
      */
     private void processCreatureAction(Creature creature, List<Creature> newCreatures, 
-                                        List<Creature> deadCreatures) {
+                                        List<Creature> deadCreatures, List<Corpse> consumedCorpses) {
         int row = creature.getRow();
         int col = creature.getCol();
         List<int[]> neighbors = getNeighbors(row, col);
         Collections.shuffle(neighbors, random);
 
+        // Scavengers (THIRD_SPECIES) prioritize corpses
+        if (creature.getType() == CellType.THIRD_SPECIES) {
+            if (processScavengerAction(creature, neighbors, consumedCorpses)) {
+                return; // Scavenger found and ate a corpse
+            }
+        }
+
         CellType targetType = getTargetType(creature.getType());
 
-        // Look for food first
-        for (int[] neighbor : neighbors) {
-            CellType cellType = grid[neighbor[0]][neighbor[1]];
-            if (cellType == targetType) {
-                // Hunt/eat
-                Creature prey = findCreatureAt(neighbor[0], neighbor[1]);
-                if (prey != null && !deadCreatures.contains(prey)) {
-                    deadCreatures.add(prey);
-                    stats.recordDeath();
-                    creaturePositionMap.remove(positionKey(prey.getRow(), prey.getCol()));
-                    grid[prey.getRow()][prey.getCol()] = CellType.EMPTY;
-                    
-                    // Move to prey's position and gain energy
-                    creaturePositionMap.remove(positionKey(row, col));
-                    grid[row][col] = CellType.EMPTY;
-                    creature.move(neighbor[0], neighbor[1]);
-                    grid[neighbor[0]][neighbor[1]] = creature.getType();
-                    creaturePositionMap.put(positionKey(neighbor[0], neighbor[1]), creature);
-                    // Reduced energy gain from 8 to 5 to nerf predators
-                    creature.eat((int)(5 * creature.getMutationBonus()));
-                    return;
+        // Look for food (living prey for predators)
+        if (targetType != null) {
+            for (int[] neighbor : neighbors) {
+                CellType cellType = grid[neighbor[0]][neighbor[1]];
+                if (cellType == targetType) {
+                    // Hunt/eat
+                    Creature prey = findCreatureAt(neighbor[0], neighbor[1]);
+                    if (prey != null && !deadCreatures.contains(prey)) {
+                        deadCreatures.add(prey);
+                        stats.recordDeath();
+                        eventLogger.logDeathByPredation(stats.getTurn(), prey, creature);
+                        creaturePositionMap.remove(positionKey(prey.getRow(), prey.getCol()));
+                        
+                        // Move to prey's position and gain energy
+                        creaturePositionMap.remove(positionKey(row, col));
+                        grid[row][col] = CellType.EMPTY;
+                        creature.move(neighbor[0], neighbor[1]);
+                        grid[neighbor[0]][neighbor[1]] = creature.getType();
+                        creaturePositionMap.put(positionKey(neighbor[0], neighbor[1]), creature);
+                        // Energy gain adjusted by mutation bonus
+                        creature.eat((int)(5 * creature.getMutationBonus()));
+                        turnEvents.append(creature.getIdString()).append(" hunted ")
+                                 .append(prey.getIdString()).append(". ");
+                        return;
+                    }
                 }
             }
         }
 
-        // If prey, eat vegetation (gain energy - increased from 2 to 3)
+        // If prey, eat vegetation (gain energy)
         if (creature.getType() == CellType.PREY) {
             creature.eat(3);
         }
 
-        // Third species can eat both (opportunistic)
+        // Third species can get a small energy gain if no corpses found
         if (creature.getType() == CellType.THIRD_SPECIES) {
             creature.eat(1);
         }
 
-        // Move to empty cell
+        // Move to empty cell (or corpse cell for scavengers)
         for (int[] neighbor : neighbors) {
-            if (grid[neighbor[0]][neighbor[1]] == CellType.EMPTY) {
+            CellType cellType = grid[neighbor[0]][neighbor[1]];
+            if (cellType == CellType.EMPTY) {
                 creaturePositionMap.remove(positionKey(row, col));
                 grid[row][col] = CellType.EMPTY;
                 creature.move(neighbor[0], neighbor[1]);
@@ -273,38 +336,96 @@ public class SimulationEngine {
     }
 
     /**
+     * Process scavenger-specific behavior - prioritize finding and eating corpses
+     */
+    private boolean processScavengerAction(Creature scavenger, List<int[]> neighbors, 
+                                           List<Corpse> consumedCorpses) {
+        int row = scavenger.getRow();
+        int col = scavenger.getCol();
+
+        // Look for corpses in neighboring cells
+        for (int[] neighbor : neighbors) {
+            if (grid[neighbor[0]][neighbor[1]] == CellType.CORPSE) {
+                Corpse corpse = corpseMap.get(positionKey(neighbor[0], neighbor[1]));
+                if (corpse != null && !consumedCorpses.contains(corpse)) {
+                    // Consume the corpse
+                    int energyGain = corpse.consume();
+                    scavenger.eat((int)(energyGain * scavenger.getMutationBonus()));
+                    consumedCorpses.add(corpse);
+                    eventLogger.logScavenging(stats.getTurn(), scavenger, corpse);
+                    turnEvents.append(scavenger.getIdString()).append(" scavenged ")
+                             .append(corpse.getIdString()).append(". ");
+
+                    // Move to corpse position
+                    creaturePositionMap.remove(positionKey(row, col));
+                    grid[row][col] = CellType.EMPTY;
+                    scavenger.move(neighbor[0], neighbor[1]);
+                    grid[neighbor[0]][neighbor[1]] = scavenger.getType();
+                    creaturePositionMap.put(positionKey(neighbor[0], neighbor[1]), scavenger);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Get the target food type for a creature
      */
     private CellType getTargetType(CellType creatureType) {
         return switch (creatureType) {
             case PREDATOR -> CellType.PREY;
             case PREY -> null; // Prey eats vegetation (always available)
-            case THIRD_SPECIES -> random.nextBoolean() ? CellType.PREY : CellType.PREDATOR;
+            case THIRD_SPECIES -> null; // Scavengers eat corpses (handled separately)
             default -> null;
         };
     }
 
     /**
-     * Try to reproduce a creature
+     * Try to reproduce using sex-based mating rules
      */
-    private Creature tryReproduce(Creature parent) {
+    private Creature tryReproduce(Creature parent, List<Creature> newCreatures) {
         int row = parent.getRow();
         int col = parent.getCol();
         List<int[]> neighbors = getNeighbors(row, col);
         Collections.shuffle(neighbors, random);
 
+        // Find a mate of opposite sex, same species, in neighboring cells
+        Creature mate = findMate(parent, neighbors);
+        
+        if (mate == null) {
+            return null; // No suitable mate found
+        }
+
+        // Find an empty cell for offspring
         for (int[] neighbor : neighbors) {
             if (grid[neighbor[0]][neighbor[1]] == CellType.EMPTY) {
-                parent.reproduce();
-                Creature offspring = new Creature(parent.getType(), neighbor[0], neighbor[1]);
+                // Use ReproductionManager for proper mating validation
+                Creature offspring = reproductionManager.reproduce(
+                    parent, mate, neighbor[0], neighbor[1], config.isMutationsEnabled());
                 
-                // Inherit mutation with some probability
-                if (parent.isMutated() && random.nextDouble() < 0.7) {
-                    offspring.mutate();
+                if (offspring != null) {
+                    grid[neighbor[0]][neighbor[1]] = offspring.getType();
+                    return offspring;
                 }
-                
-                grid[neighbor[0]][neighbor[1]] = offspring.getType();
-                return offspring;
+                break;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Find a suitable mate (opposite sex, same species, mature, can mate) in neighboring cells
+     */
+    private Creature findMate(Creature seeker, List<int[]> neighbors) {
+        for (int[] neighbor : neighbors) {
+            Creature candidate = findCreatureAt(neighbor[0], neighbor[1]);
+            if (candidate != null) {
+                // Check if this is a valid mate
+                String rejectionReason = reproductionManager.canMate(seeker, candidate);
+                if (rejectionReason == null) {
+                    return candidate;
+                }
             }
         }
         return null;
@@ -317,6 +438,7 @@ public class SimulationEngine {
         for (Creature creature : creatures) {
             if (!creature.isMutated() && random.nextDouble() < 0.02) { // 2% chance per turn
                 creature.mutate();
+                eventLogger.logMutationActivated(stats.getTurn(), creature);
             }
         }
     }
@@ -355,16 +477,51 @@ public class SimulationEngine {
     }
 
     /**
-     * Update statistics based on current state
+     * Get the creature at a specific position
+     */
+    public Creature getCreatureAt(int row, int col) {
+        return creaturePositionMap.get(positionKey(row, col));
+    }
+
+    /**
+     * Get the corpse at a specific position
+     */
+    public Corpse getCorpseAt(int row, int col) {
+        return corpseMap.get(positionKey(row, col));
+    }
+
+    /**
+     * Update statistics based on current state including sex ratios
      */
     private void updateStats() {
         int predators = 0, prey = 0, third = 0, mutated = 0;
+        int predatorMales = 0, predatorFemales = 0;
+        int preyMales = 0, preyFemales = 0;
+        int thirdMales = 0, thirdFemales = 0;
+        boolean predatorHasMutations = false;
+        boolean preyHasMutations = false;
+        boolean thirdHasMutations = false;
         
         for (Creature creature : creatures) {
             switch (creature.getType()) {
-                case PREDATOR -> predators++;
-                case PREY -> prey++;
-                case THIRD_SPECIES -> third++;
+                case PREDATOR -> {
+                    predators++;
+                    if (creature.getSex() == Sex.MALE) predatorMales++;
+                    else predatorFemales++;
+                    if (creature.isMutated()) predatorHasMutations = true;
+                }
+                case PREY -> {
+                    prey++;
+                    if (creature.getSex() == Sex.MALE) preyMales++;
+                    else preyFemales++;
+                    if (creature.isMutated()) preyHasMutations = true;
+                }
+                case THIRD_SPECIES -> {
+                    third++;
+                    if (creature.getSex() == Sex.MALE) thirdMales++;
+                    else thirdFemales++;
+                    if (creature.isMutated()) thirdHasMutations = true;
+                }
                 default -> {}
             }
             if (creature.isMutated()) mutated++;
@@ -374,6 +531,20 @@ public class SimulationEngine {
         stats.setPreyCount(prey);
         stats.setThirdSpeciesCount(third);
         stats.setMutatedCount(mutated);
+        stats.setCorpseCount(corpseMap.size());
+        
+        // Update sex counts
+        stats.setPredatorMaleCount(predatorMales);
+        stats.setPredatorFemaleCount(predatorFemales);
+        stats.setPreyMaleCount(preyMales);
+        stats.setPreyFemaleCount(preyFemales);
+        stats.setThirdSpeciesMaleCount(thirdMales);
+        stats.setThirdSpeciesFemaleCount(thirdFemales);
+        
+        // Update mutation status per species
+        stats.setPredatorHasMutations(predatorHasMutations);
+        stats.setPreyHasMutations(preyHasMutations);
+        stats.setThirdSpeciesHasMutations(thirdHasMutations);
     }
 
     // Control methods
@@ -424,6 +595,8 @@ public class SimulationEngine {
     public SimulationStats getStats() { return stats; }
     public SimulationConfig getConfig() { return config; }
     public int getExtinctionTurn() { return extinctionTurn; }
+    public EventLogger getEventLogger() { return eventLogger; }
+    public Map<String, Corpse> getCorpseMap() { return corpseMap; }
 
     // Callback setters
     public void setOnGridUpdate(Runnable callback) { this.onGridUpdate = callback; }
