@@ -924,17 +924,19 @@
 }
 
 .chart-title {
-    -fx-font-size: 16px;
+    -fx-font-size: 18px;
     -fx-font-weight: 700;
     -fx-text-fill: #FFFFFF;
 }
 
 .chart-legend {
     -fx-background-color: transparent;
+    -fx-padding: 10px;
 }
 
 .chart-legend-item {
     -fx-text-fill: #B3B3B3;
+    -fx-font-size: 13px;
 }
 
 .chart-pie {
@@ -943,9 +945,14 @@
 }
 
 .chart-pie-label {
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
     -fx-font-weight: 600;
     -fx-fill: #FFFFFF;
+}
+
+.chart-pie-label-line {
+    -fx-stroke: rgba(0, 229, 255, 0.5);
+    -fx-stroke-width: 1.5px;
 }
 
 /* Chart color palette for dark mode */
@@ -960,6 +967,36 @@
 .default-color2.chart-legend-item-symbol { -fx-background-color: #FFAB40; }
 .default-color3.chart-legend-item-symbol { -fx-background-color: #69F0AE; }
 .default-color4.chart-legend-item-symbol { -fx-background-color: #E040FB; }
+
+/* ===========================
+   EVENT LOG - TEXT AREA STYLING (DARK)
+   =========================== */
+
+.event-log {
+    -fx-background-color: rgba(30, 30, 30, 0.9);
+    -fx-background-radius: 8px;
+    -fx-border-color: rgba(0, 229, 255, 0.3);
+    -fx-border-radius: 8px;
+    -fx-border-width: 1px;
+    -fx-effect: innershadow(gaussian, rgba(0, 0, 0, 0.3), 4, 0, 0, 2);
+}
+
+.event-log .content {
+    -fx-background-color: rgba(30, 30, 30, 0.95);
+    -fx-background-radius: 8px;
+}
+
+.event-log .scroll-pane {
+    -fx-background-color: transparent;
+}
+
+.event-log .scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+.event-log .text {
+    -fx-fill: #E0E0E0;
+}
 
 /* ===========================
    FOCUS RING - NEON STYLE
