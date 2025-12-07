@@ -148,9 +148,14 @@ public class Creature {
 
     /**
      * Eat food to reduce hunger (for prey eating vegetation)
+     * Enhanced Strength mutation provides bonus energy
      */
     public void eatFood() {
         this.hunger = Math.max(0, this.hunger - 40);
+        // Enhanced Strength mutation provides extra energy from food
+        if (mutationType == MutationType.ENHANCED_STRENGTH) {
+            this.energy += 2; // Bonus energy from enhanced strength
+        }
     }
 
     /**
@@ -199,9 +204,10 @@ public class Creature {
     
     /**
      * Apply a random mutation to this creature
+     * Uses a new Random instance - for tests, use mutate(MutationType) directly
      */
     public void mutate() {
-        mutate(MutationType.getRandomMutation());
+        mutate(MutationType.getRandomMutation(new java.util.Random()));
     }
 
     // Getters and setters

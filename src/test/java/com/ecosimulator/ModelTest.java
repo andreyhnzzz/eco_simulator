@@ -59,7 +59,10 @@ class ModelTest {
         creature.mutate();
         
         assertTrue(creature.isMutated());
-        assertEquals(1.5, creature.getMutationBonus());
+        // Mutation bonus should be one of the three types: 1.3, 1.4, or 1.5
+        assertTrue(creature.getMutationBonus() >= 1.3 && creature.getMutationBonus() <= 1.5,
+                "Mutation bonus should be between 1.3 and 1.5");
+        assertNotEquals(MutationType.NONE, creature.getMutationType());
     }
 
     @Test

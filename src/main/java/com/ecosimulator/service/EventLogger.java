@@ -278,12 +278,12 @@ public class EventLogger {
     /**
      * Log water consumption
      */
-    public void logWaterConsumed(int turn, Creature creature, int row, int col) {
+    public void logWaterConsumed(int turn, Creature creature, int row, int col, int thirstBefore) {
         String message = String.format("💧 %s %s drank water at (%d,%d) - Thirst: %d → %d",
             creature.getType().getDisplayName(),
             creature.getIdString(),
             row, col,
-            Math.min(100, creature.getThirst() + 50), // Before drinking
+            thirstBefore, // Before drinking
             creature.getThirst()); // After drinking
         String details = String.format("Thirst reduced, Species: %s",
             creature.getType().getDisplayName());
@@ -293,12 +293,12 @@ public class EventLogger {
     /**
      * Log food consumption
      */
-    public void logFoodConsumed(int turn, Creature creature, int row, int col) {
+    public void logFoodConsumed(int turn, Creature creature, int row, int col, int hungerBefore) {
         String message = String.format("🍃 %s %s ate food at (%d,%d) - Hunger: %d → %d",
             creature.getType().getDisplayName(),
             creature.getIdString(),
             row, col,
-            Math.min(100, creature.getHunger() + 40), // Before eating
+            hungerBefore, // Before eating
             creature.getHunger()); // After eating
         String details = String.format("Hunger reduced, Species: %s",
             creature.getType().getDisplayName());

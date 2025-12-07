@@ -49,10 +49,11 @@ public enum MutationType {
     
     /**
      * Get a random mutation type (excluding NONE)
+     * @param random Random instance for reproducibility in tests
      */
-    public static MutationType getRandomMutation() {
+    public static MutationType getRandomMutation(java.util.Random random) {
         MutationType[] mutations = {EFFICIENT_METABOLISM, ENHANCED_STRENGTH, THERMAL_RESISTANCE};
-        return mutations[(int) (Math.random() * mutations.length)];
+        return mutations[random.nextInt(mutations.length)];
     }
     
     @Override

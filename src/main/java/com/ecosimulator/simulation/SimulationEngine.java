@@ -394,17 +394,19 @@ public class SimulationEngine {
                 moveCreature(creature, neighbor[0], neighbor[1], currentRow, currentCol);
                 
                 if (resourceType == CellType.WATER) {
+                    int thirstBefore = creature.getThirst();
                     creature.drink();
                     stats.incrementWaterConsumed();
-                    eventLogger.logWaterConsumed(stats.getTurn(), creature, neighbor[0], neighbor[1]);
+                    eventLogger.logWaterConsumed(stats.getTurn(), creature, neighbor[0], neighbor[1], thirstBefore);
                     turnEvents.append(creature.getIdString()).append(" drank water at (")
                              .append(neighbor[0]).append(",").append(neighbor[1]).append("). ");
                     // Respawn water after consumption
                     grid[neighbor[0]][neighbor[1]] = CellType.WATER;
                 } else if (resourceType == CellType.FOOD) {
+                    int hungerBefore = creature.getHunger();
                     creature.eatFood();
                     stats.incrementFoodConsumed();
-                    eventLogger.logFoodConsumed(stats.getTurn(), creature, neighbor[0], neighbor[1]);
+                    eventLogger.logFoodConsumed(stats.getTurn(), creature, neighbor[0], neighbor[1], hungerBefore);
                     turnEvents.append(creature.getIdString()).append(" ate food at (")
                              .append(neighbor[0]).append(",").append(neighbor[1]).append("). ");
                     // Respawn food after consumption

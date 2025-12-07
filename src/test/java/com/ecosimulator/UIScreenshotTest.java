@@ -1,18 +1,6 @@
 package com.ecosimulator;
 
-import com.ecosimulator.auth.Session;
-import com.ecosimulator.auth.User;
-import com.ecosimulator.ui.SimulationView;
-import javafx.application.Platform;
-import javafx.embed.swing.SwingFXUtils;
-import javafx.scene.Scene;
-import javafx.scene.image.WritableImage;
-import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-
-import javax.imageio.ImageIO;
-import java.io.File;
 
 /**
  * Test class to capture UI screenshots
