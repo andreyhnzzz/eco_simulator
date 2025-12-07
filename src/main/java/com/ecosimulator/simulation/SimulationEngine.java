@@ -304,7 +304,10 @@ public class SimulationEngine {
                                         List<Creature> deadCreatures, List<Corpse> consumedCorpses) {
         int row = creature.getRow();
         int col = creature.getCol();
-        List<int[]> neighbors = getNeighbors(row, col);
+        
+        // Get movement range based on creature type and energy
+        int movementRange = getMovementRange(creature);
+        List<int[]> neighbors = getNeighborsWithinRange(row, col, movementRange);
         Collections.shuffle(neighbors, random);
 
         // Priority 1: Check if creature is critically thirsty (>70) - seek water immediately
@@ -578,20 +581,60 @@ public class SimulationEngine {
     }
 
     /**
-     * Get valid neighboring cells
+     * Get movement range for a creature based on its type and energy
+     */
+    private int getMovementRange(Creature creature) {
+        // Base movement range by creature type
+        int baseRange = switch (creature.getType()) {
+            case PREDATOR -> 2;  // Predators can move 2 cells
+            case PREY -> 2;      // Prey can move 2 cells
+            case THIRD_SPECIES -> 3;  // Scavengers can move 3 cells (faster)
+            default -> 1;
+        };
+        
+        // Reduce range if energy is very low (less than 5)
+        if (creature.getEnergy() < 5) {
+            return Math.max(1, baseRange - 1);
+        }
+        
+        return baseRange;
+    }
+    
+    /**
+     * Get valid neighboring cells (default 1 cell distance in all 8 directions)
      */
     private List<int[]> getNeighbors(int row, int col) {
+        return getNeighborsWithinRange(row, col, 1);
+    }
+    
+    /**
+     * Get valid neighboring cells within a specified range
+     * Range determines how many cells away a creature can move in each direction
+     * 
+     * Note: This uses a square pattern (Chebyshev distance) rather than circular/Manhattan distance.
+     * This is intentional for grid-based movement, allowing creatures to move to any cell
+     * within the square boundary, including diagonals, which is more natural for grid navigation.
+     */
+    private List<int[]> getNeighborsWithinRange(int row, int col, int range) {
         List<int[]> neighbors = new ArrayList<>();
         int size = config.getGridSize();
-        int[][] directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}, {-1, -1}, {-1, 1}, {1, -1}, {1, 1}};
         
-        for (int[] dir : directions) {
-            int newRow = row + dir[0];
-            int newCol = col + dir[1];
-            if (newRow >= 0 && newRow < size && newCol >= 0 && newCol < size) {
-                neighbors.add(new int[]{newRow, newCol});
+        // Generate all positions within the range in 8 directions (square pattern)
+        for (int dr = -range; dr <= range; dr++) {
+            for (int dc = -range; dc <= range; dc++) {
+                // Skip the center position (0,0)
+                if (dr == 0 && dc == 0) continue;
+                
+                int newRow = row + dr;
+                int newCol = col + dc;
+                
+                // Check if position is within grid bounds
+                if (newRow >= 0 && newRow < size && newCol >= 0 && newCol < size) {
+                    neighbors.add(new int[]{newRow, newCol});
+                }
             }
         }
+        
         return neighbors;
     }
 
