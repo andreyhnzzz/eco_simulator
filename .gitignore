@@ -51,6 +51,7 @@ config/smtp.properties
 
 # OAuth credentials and tokens (DO NOT COMMIT!)
 credentials.json
+src/main/resources/oauth/credentials.json
 tokens/
 
 # Outgoing reports fallback directory

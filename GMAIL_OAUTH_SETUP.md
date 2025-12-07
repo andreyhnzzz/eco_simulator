@@ -54,16 +54,21 @@ OAuth2 provides more secure authentication compared to SMTP passwords:
 4. Name it `Eco Simulator Desktop Client`
 5. Click **Create**
 6. **Download** the JSON file (credentials.json)
-7. Save it to your Eco Simulator directory
+7. Place it in `src/main/resources/oauth/` directory of your Eco Simulator project
+   - Alternatively, save it anywhere and browse to it in the settings
 
 ### 5. Configure Eco Simulator
 
 1. Launch Eco Simulator
 2. Go to **Settings** or **Email Configuration**
 3. Check the box **"Use Gmail OAuth2"**
-4. Click **Browse** and select your `credentials.json` file
-5. Enter your Gmail address in the **From Email** field
-6. Click **Test Connection** to authenticate:
+4. **Option A**: Place credentials.json in `src/main/resources/oauth/` (recommended)
+   - Leave the credentials field empty in the UI
+   - The application will automatically use the file from resources
+5. **Option B**: Use an external credentials file
+   - Click **Browse** and select your `credentials.json` file from any location
+6. Enter your Gmail address in the **From Email** field
+7. Click **Test Connection** to authenticate:
    - A browser window will open
    - Sign in to your Google account
    - Grant permissions to Eco Simulator
@@ -86,8 +91,10 @@ OAuth tokens are stored in the `tokens/` directory and will be reused for future
 ### "Credentials file not found" Error
 
 - Make sure you downloaded credentials.json from Google Cloud Console
-- Verify the file path is correct in the settings
+- **Option 1**: Place it in `src/main/resources/oauth/credentials.json`
+- **Option 2**: Browse to select the file from any location in the settings
 - Check that the file is named exactly `credentials.json`
+- Verify the file is not in `.gitignore` excluded directories
 
 ### "Access blocked" or "This app isn't verified" Error
 
@@ -110,7 +117,7 @@ OAuth tokens are stored in the `tokens/` directory and will be reused for future
 ## Security Best Practices
 
 1. **Never commit credentials.json to version control**
-   - It's already in `.gitignore`
+   - It's already in `.gitignore` for both root and resources/oauth locations
    - Keep it secure on your local machine
 
 2. **Revoke access if compromised**
