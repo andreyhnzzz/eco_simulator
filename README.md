@@ -265,4 +265,6 @@ mvn test -Dtest=EmailServiceTest
 
 ## License
 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 This project is part of UTN coursework for 2025 III Quarter.
