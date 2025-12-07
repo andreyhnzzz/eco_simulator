@@ -67,6 +67,13 @@ public class SimulationView extends BorderPane {
     private SimulationEngine engine;
     private SimulationRunner runner;
     private EmailService emailService;
+    
+    // Multi-simulation tracking
+    private MultiSimulationReport multiSimulationReport;
+    private boolean consecutiveSimulationMode;
+    private int currentSimulationNumber;
+    private Button nextSimulationButton;
+    private Button stopAndReportButton;
 
     // Grid cells for animation
     private Rectangle[][] gridCells;
@@ -91,6 +98,9 @@ public class SimulationView extends BorderPane {
         this.config = new SimulationConfig().withGridSize(DEFAULT_GRID_SIZE);
         this.emailService = new EmailService();
         this.previousGrid = new CellType[DEFAULT_GRID_SIZE][DEFAULT_GRID_SIZE];
+        this.multiSimulationReport = new MultiSimulationReport();
+        this.consecutiveSimulationMode = false;
+        this.currentSimulationNumber = 0;
         
         // Preload icons
         IconManager.preloadIcons();
@@ -232,7 +242,26 @@ public class SimulationView extends BorderPane {
             openSmtpSettings();
         });
         
+        nextSimulationButton = createAnimatedButton("➡️ Siguiente", "next-simulation-button");
+        nextSimulationButton.setDisable(true);
+        nextSimulationButton.setOnAction(e -> {
+            AnimationUtils.playButtonClickAnimation(nextSimulationButton);
+            startNextSimulation();
+        });
+        
+        stopAndReportButton = createAnimatedButton("⏹ Finalizar & PDF", "stop-report-button");
+        stopAndReportButton.setDisable(true);
+        stopAndReportButton.setOnAction(e -> {
+            AnimationUtils.playButtonClickAnimation(stopAndReportButton);
+            stopConsecutiveSimulationsAndGenerateReport();
+        });
+        
         buttonBox.getChildren().addAll(startButton, pauseButton, resetButton, compareButton, settingsButton);
+        
+        // Second row for consecutive simulation controls
+        HBox consecutiveButtonBox = new HBox(18);
+        consecutiveButtonBox.setAlignment(Pos.CENTER);
+        consecutiveButtonBox.getChildren().addAll(nextSimulationButton, stopAndReportButton);
 
         // Theme toggle button
         themeToggleButton = new Button(ThemeManager.getThemeToggleText());
@@ -257,7 +286,7 @@ public class SimulationView extends BorderPane {
         
         topRow.getChildren().addAll(spacer1, titleBox, spacer2, themeToggleButton);
 
-        panel.getChildren().addAll(topRow, scenarioBox, extensionsBox, speedBox, buttonBox);
+        panel.getChildren().addAll(topRow, scenarioBox, extensionsBox, speedBox, buttonBox, consecutiveButtonBox);
         return panel;
     }
     
@@ -606,13 +635,20 @@ public class SimulationView extends BorderPane {
 
     private void startSimulation() {
         if (runner != null && !runner.isRunning()) {
+            // Start first simulation in consecutive mode
+            consecutiveSimulationMode = true;
+            currentSimulationNumber = 1;
+            multiSimulationReport.clear();
+            
             runner.start();
             startButton.setDisable(true);
             pauseButton.setDisable(false);
+            nextSimulationButton.setDisable(true);
+            stopAndReportButton.setDisable(true);
             scenarioComboBox.setDisable(true);
             thirdSpeciesCheckBox.setDisable(true);
             mutationsCheckBox.setDisable(true);
-            statusLabel.setText("🔄 Simulación en progreso...");
+            statusLabel.setText(String.format("🔄 Simulación #%d en progreso...", currentSimulationNumber));
         }
     }
 
@@ -634,6 +670,10 @@ public class SimulationView extends BorderPane {
         if (runner != null) {
             runner.reset();
         }
+        
+        // Reset consecutive simulation mode
+        resetConsecutiveSimulationState();
+        
         startButton.setDisable(false);
         pauseButton.setDisable(true);
         pauseButton.setText("⏸ Pausar");
@@ -964,28 +1004,190 @@ public class SimulationView extends BorderPane {
         Platform.runLater(() -> {
             SimulationStats stats = engine.getStats();
             String result = stats.getWinner();
-            
-            statusLabel.setText("🏆 Simulación terminada: " + result);
-            startButton.setDisable(false);
-            pauseButton.setDisable(true);
-            scenarioComboBox.setDisable(false);
-            thirdSpeciesCheckBox.setDisable(false);
-            mutationsCheckBox.setDisable(false);
-
-            stopMutationAnimations();
-            
-            // Get extinction turn from engine
             int extinctionTurn = engine.getExtinctionTurn();
             
-            // Show premium results screen
-            if (getScene() != null && getScene().getWindow() instanceof Stage) {
-                Stage owner = (Stage) getScene().getWindow();
-                ResultsScreen.showResultsDialog(owner, stats, DEFAULT_GRID_SIZE, extinctionTurn, emailService);
-            }
+            stopMutationAnimations();
             
-            // Also generate and send report in background
-            generateAndSendReport(stats);
+            // Handle consecutive simulation mode
+            if (consecutiveSimulationMode) {
+                // Store the simulation result
+                SimulationResult simResult = new SimulationResult(
+                    currentSimulationNumber,
+                    scenarioComboBox.getValue(),
+                    thirdSpeciesCheckBox.isSelected(),
+                    mutationsCheckBox.isSelected(),
+                    DEFAULT_GRID_SIZE,
+                    stats,
+                    extinctionTurn
+                );
+                multiSimulationReport.addSimulation(simResult);
+                
+                // Update status and enable next simulation
+                statusLabel.setText(String.format("✅ Simulación #%d terminada: %s | Total: %s", 
+                                                 currentSimulationNumber, result, 
+                                                 getSimulationCountText(multiSimulationReport.getSimulationCount())));
+                nextSimulationButton.setDisable(false);
+                stopAndReportButton.setDisable(false);
+                pauseButton.setDisable(true);
+                
+                // Show brief notification
+                showNotification("Simulación Completada", 
+                               String.format("Simulación #%d finalizada. Use 'Siguiente' para continuar o 'Finalizar & PDF' para generar reporte.", 
+                                           currentSimulationNumber),
+                               Alert.AlertType.INFORMATION);
+            } else {
+                // Single simulation mode (original behavior)
+                statusLabel.setText("🏆 Simulación terminada: " + result);
+                startButton.setDisable(false);
+                pauseButton.setDisable(true);
+                scenarioComboBox.setDisable(false);
+                thirdSpeciesCheckBox.setDisable(false);
+                mutationsCheckBox.setDisable(false);
+                
+                // Show premium results screen
+                if (getScene() != null && getScene().getWindow() instanceof Stage) {
+                    Stage owner = (Stage) getScene().getWindow();
+                    ResultsScreen.showResultsDialog(owner, stats, DEFAULT_GRID_SIZE, extinctionTurn, emailService);
+                }
+                
+                // Also generate and send report in background
+                generateAndSendReport(stats);
+            }
         });
+    }
+
+    /**
+     * Reset consecutive simulation state to defaults
+     */
+    private void resetConsecutiveSimulationState() {
+        consecutiveSimulationMode = false;
+        currentSimulationNumber = 0;
+        multiSimulationReport.clear();
+        nextSimulationButton.setDisable(true);
+        stopAndReportButton.setDisable(true);
+    }
+    
+    /**
+     * Helper method to get properly pluralized simulation count text
+     */
+    private String getSimulationCountText(int count) {
+        return count == 1 ? "1 simulación" : count + " simulaciones";
+    }
+    
+    /**
+     * Start a new simulation in consecutive mode
+     */
+    private void startNextSimulation() {
+        // Cycle through scenarios automatically using enum ordinal
+        Scenario[] scenarios = Scenario.values();
+        Scenario currentScenario = scenarioComboBox.getValue();
+        
+        // Use ordinal for cleaner code - handles null safely by defaulting to 0
+        int currentIndex = (currentScenario != null) ? currentScenario.ordinal() : -1;
+        int nextIndex = (currentIndex + 1) % scenarios.length;
+        scenarioComboBox.setValue(scenarios[nextIndex]);
+        
+        // Enable consecutive simulation mode
+        consecutiveSimulationMode = true;
+        currentSimulationNumber++;
+        
+        // Disable controls
+        nextSimulationButton.setDisable(true);
+        stopAndReportButton.setDisable(true);
+        scenarioComboBox.setDisable(true);
+        thirdSpeciesCheckBox.setDisable(true);
+        mutationsCheckBox.setDisable(true);
+        startButton.setDisable(true);
+        pauseButton.setDisable(false);
+        
+        // Reset and start new simulation
+        updateConfig();
+        clearAllGridIcons();
+        statusLabel.setText(String.format("🔄 Ejecutando simulación #%d: %s", 
+                                        currentSimulationNumber, 
+                                        scenarioComboBox.getValue().getDisplayName()));
+        
+        if (runner != null) {
+            runner.start();
+        }
+    }
+    
+    /**
+     * Stop consecutive simulations and generate multi-page PDF report
+     */
+    private void stopConsecutiveSimulationsAndGenerateReport() {
+        if (multiSimulationReport.isEmpty()) {
+            showNotification("⚠️ Sin Simulaciones", 
+                           "No hay simulaciones completadas para generar el reporte.", 
+                           Alert.AlertType.WARNING);
+            return;
+        }
+        
+        // Reset state
+        resetConsecutiveSimulationState();
+        startButton.setDisable(false);
+        scenarioComboBox.setDisable(false);
+        thirdSpeciesCheckBox.setDisable(false);
+        mutationsCheckBox.setDisable(false);
+        
+        statusLabel.setText("📄 Generando reporte multi-simulación...");
+        
+        // Generate multi-simulation report in background
+        new Thread(() -> {
+            try {
+                String reportFilename = "multi_simulation_" + PDFReportGenerator.getDefaultFilename();
+                Path reportsDir = Paths.get("reports");
+                
+                if (!Files.exists(reportsDir)) {
+                    Files.createDirectories(reportsDir);
+                }
+                
+                String reportPath = reportsDir.resolve(reportFilename).toString();
+                PDFReportGenerator.generateMultiSimulationReport(reportPath, multiSimulationReport);
+                
+                File reportFile = new File(reportPath);
+                LOGGER.info("Multi-simulation PDF report generated: " + reportPath);
+                
+                int totalSimulations = multiSimulationReport.getSimulationCount();
+                Platform.runLater(() -> {
+                    statusLabel.setText(String.format("✅ Reporte generado: %s", 
+                                                    getSimulationCountText(totalSimulations)));
+                    
+                    // Send email if logged in
+                    if (Session.isLoggedIn()) {
+                        var currentUser = Session.getUser();
+                        if (currentUser != null && currentUser.getEmail() != null && !currentUser.getEmail().isEmpty()) {
+                            String userEmail = currentUser.getEmail();
+                            String subject = "Eco Simulator - Multi-Simulation Report";
+                            String body = String.format("Hello %s,\n\nAttached is your multi-simulation report with %s.\n\nBest regards,\nEco Simulator",
+                                                      currentUser.getName(), getSimulationCountText(totalSimulations));
+                            
+                            boolean emailSent = emailService.sendReport(userEmail, reportFile, subject, body);
+                            showEmailNotification(emailSent, userEmail, reportPath);
+                        } else {
+                            showNotification("📄 Reporte Guardado", 
+                                           String.format("Reporte multi-simulación guardado en: %s\n%s incluidas", 
+                                                        reportPath, getSimulationCountText(totalSimulations)), 
+                                           Alert.AlertType.INFORMATION);
+                        }
+                    } else {
+                        showNotification("📄 Reporte Guardado", 
+                                       String.format("Reporte multi-simulación guardado en: %s\n%s incluidas", 
+                                                    reportPath, getSimulationCountText(totalSimulations)), 
+                                       Alert.AlertType.INFORMATION);
+                    }
+                });
+                
+            } catch (IOException e) {
+                LOGGER.log(Level.WARNING, "Failed to generate multi-simulation PDF report", e);
+                Platform.runLater(() -> {
+                    statusLabel.setText("❌ Error generando reporte");
+                    showNotification("⚠️ Error en Reporte", 
+                                   "No se pudo generar el reporte PDF: " + e.getMessage(), 
+                                   Alert.AlertType.ERROR);
+                });
+            }
+        }).start();
     }
 
     private void generateAndSendReport(SimulationStats stats) {
