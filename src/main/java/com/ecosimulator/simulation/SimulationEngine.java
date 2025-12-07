@@ -610,12 +610,16 @@ public class SimulationEngine {
     /**
      * Get valid neighboring cells within a specified range
      * Range determines how many cells away a creature can move in each direction
+     * 
+     * Note: This uses a square pattern (Chebyshev distance) rather than circular/Manhattan distance.
+     * This is intentional for grid-based movement, allowing creatures to move to any cell
+     * within the square boundary, including diagonals, which is more natural for grid navigation.
      */
     private List<int[]> getNeighborsWithinRange(int row, int col, int range) {
         List<int[]> neighbors = new ArrayList<>();
         int size = config.getGridSize();
         
-        // Generate all positions within the range in 8 directions
+        // Generate all positions within the range in 8 directions (square pattern)
         for (int dr = -range; dr <= range; dr++) {
             for (int dc = -range; dc <= range; dc++) {
                 // Skip the center position (0,0)

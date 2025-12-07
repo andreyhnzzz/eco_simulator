@@ -521,7 +521,7 @@ public class SimulationView extends BorderPane {
         eventLogArea.setMinHeight(250);
         eventLogArea.setPrefHeight(400);
         eventLogArea.getStyleClass().add("event-log");
-        eventLogArea.setStyle("-fx-font-size: 8px; -fx-font-family: 'Courier New', monospace;");
+        eventLogArea.setStyle("-fx-font-size: 9px; -fx-font-family: 'Courier New', monospace;");
 
         panel.getChildren().addAll(
             statsTitle, turnLabel, sep1,
