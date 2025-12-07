@@ -647,10 +647,11 @@ public class SimulationEngine {
      */
     private int getMovementRange(Creature creature) {
         // Base movement range by creature type
-        // Reduced predator range to 1 to make them less efficient with Dijkstra pathfinding
+        // Reduced predator range to 1 to reduce per-turn hunting efficiency
+        // This extends overall simulation duration for better educational value
         int baseRange = switch (creature.getType()) {
-            case PREDATOR -> 1;  // Predators move 1 cell (less efficient for longer simulations)
-            case PREY -> 2;      // Prey can move 2 cells (can escape better)
+            case PREDATOR -> 1;  // Predators move 1 cell per turn (reduced hunting efficiency)
+            case PREY -> 2;      // Prey can move 2 cells (better escape capability)
             case THIRD_SPECIES -> 2;  // Scavengers can move 2 cells
             default -> 1;
         };

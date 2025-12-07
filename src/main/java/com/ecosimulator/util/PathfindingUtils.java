@@ -79,6 +79,9 @@ public class PathfindingUtils {
     
     /**
      * Find all cells of a specific type within max distance
+     * Note: Uses square iteration with Manhattan distance filter.
+     * For typical grid sizes (25x25) and small max distances (5-12),
+     * performance is adequate. Could optimize with diamond pattern for larger grids.
      */
     private static List<int[]> findTargets(CellType[][] grid, int startRow, int startCol,
                                           CellType targetType, int maxDistance) {
@@ -206,6 +209,9 @@ public class PathfindingUtils {
                     nodeMap.put(neighborKey, neighbor);
                     openSet.add(neighbor);
                 } else if (newDistance < neighbor.distance) {
+                    // Note: remove() and add() on PriorityQueue is O(n).
+                    // For larger grids, consider using an indexed priority queue.
+                    // Current performance is adequate for typical grid sizes (25x25).
                     openSet.remove(neighbor);
                     neighbor.distance = newDistance;
                     neighbor.parent = current;
