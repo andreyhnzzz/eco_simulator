@@ -19,6 +19,15 @@ module com.ecosimulator {
     
     // GSON for JSON processing
     requires com.google.gson;
+    
+    // Google API Client for Gmail OAuth (automatic modules)
+    requires com.google.api.client; // google-http-client
+    requires google.api.client; // google-api-client  
+    requires com.google.api.client.auth; // google-oauth-client
+    requires com.google.api.client.json.gson; // google-http-client-gson
+    requires com.google.api.client.extensions.java6.auth; // google-oauth-client-java6
+    requires com.google.api.client.extensions.jetty.auth; // google-oauth-client-jetty
+    requires com.google.api.services.gmail; // google-api-services-gmail
 
     opens com.ecosimulator to javafx.fxml;
     opens com.ecosimulator.ui to javafx.fxml;
