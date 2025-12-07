@@ -15,9 +15,10 @@ public class EcosystemPanel extends JPanel {
     
     private static final int MIN_CELL_SIZE = 30;
     private static final int DEFAULT_CELL_SIZE = 50;
-    private static final int MAX_CELL_SIZE = 100;
     private static final int GRID_MARGIN = 20; // Margin around the grid
     private static final double ZOOM_FACTOR = 1.1; // 10% zoom per scroll
+    private static final double MIN_ZOOM = 0.5; // 50% minimum zoom
+    private static final double MAX_ZOOM = 3.0; // 300% maximum zoom
     
     private Ecosystem ecosystem;
     private double zoomLevel = 1.0; // Current zoom level (1.0 = 100%)
@@ -40,30 +41,38 @@ public class EcosystemPanel extends JPanel {
                 if (e.getWheelRotation() < 0) {
                     // Zoom in
                     zoomLevel *= ZOOM_FACTOR;
-                    if (zoomLevel > 3.0) { // Max zoom 300%
-                        zoomLevel = 3.0;
+                    if (zoomLevel > MAX_ZOOM) {
+                        zoomLevel = MAX_ZOOM;
                     }
                 } else {
                     // Zoom out
                     zoomLevel /= ZOOM_FACTOR;
-                    if (zoomLevel < 0.5) { // Min zoom 50%
-                        zoomLevel = 0.5;
+                    if (zoomLevel < MIN_ZOOM) {
+                        zoomLevel = MIN_ZOOM;
                     }
                 }
                 
-                // Update preferred size based on zoom level
-                int zoomedWidth = (int) ((DEFAULT_CELL_SIZE * Ecosystem.GRID_SIZE + GRID_MARGIN) * zoomLevel);
-                int zoomedHeight = (int) ((DEFAULT_CELL_SIZE * Ecosystem.GRID_SIZE + GRID_MARGIN) * zoomLevel);
-                setPreferredSize(new Dimension(zoomedWidth, zoomedHeight));
-                
-                // Update tooltip to show current zoom level
-                setToolTipText(String.format("Zoom: %.0f%% (Use mouse wheel to zoom)", zoomLevel * 100));
-                
-                // Notify parent container to update scrollbars
-                revalidate();
-                repaint();
+                // Update panel size and repaint
+                updateZoomSize();
             }
         });
+    }
+    
+    /**
+     * Update panel size based on current zoom level and refresh display
+     */
+    private void updateZoomSize() {
+        // Update preferred size based on zoom level
+        int zoomedWidth = (int) ((DEFAULT_CELL_SIZE * Ecosystem.GRID_SIZE + GRID_MARGIN) * zoomLevel);
+        int zoomedHeight = (int) ((DEFAULT_CELL_SIZE * Ecosystem.GRID_SIZE + GRID_MARGIN) * zoomLevel);
+        setPreferredSize(new Dimension(zoomedWidth, zoomedHeight));
+        
+        // Update tooltip to show current zoom level
+        setToolTipText(String.format("Zoom: %.0f%% (Use mouse wheel to zoom)", zoomLevel * 100));
+        
+        // Notify parent container to update scrollbars
+        revalidate();
+        repaint();
     }
     
     /**
@@ -76,18 +85,11 @@ public class EcosystemPanel extends JPanel {
     
     /**
      * Set zoom level programmatically
-     * @param level zoom level (0.5 to 3.0)
+     * @param level zoom level (MIN_ZOOM to MAX_ZOOM)
      */
     public void setZoomLevel(double level) {
-        this.zoomLevel = Math.max(0.5, Math.min(3.0, level));
-        
-        // Update preferred size based on zoom level
-        int zoomedWidth = (int) ((DEFAULT_CELL_SIZE * Ecosystem.GRID_SIZE + GRID_MARGIN) * zoomLevel);
-        int zoomedHeight = (int) ((DEFAULT_CELL_SIZE * Ecosystem.GRID_SIZE + GRID_MARGIN) * zoomLevel);
-        setPreferredSize(new Dimension(zoomedWidth, zoomedHeight));
-        
-        revalidate();
-        repaint();
+        this.zoomLevel = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, level));
+        updateZoomSize();
     }
     
     public void setEcosystem(Ecosystem ecosystem) {
@@ -122,9 +124,8 @@ public class EcosystemPanel extends JPanel {
             ));
         }
         
-        // Apply zoom level to cell size
-        int cellSize = (int) (baseCellSize * zoomLevel);
-        cellSize = Math.max(MIN_CELL_SIZE, Math.min(cellSize, MAX_CELL_SIZE));
+        // Apply zoom level to cell size with minimum size constraint
+        int cellSize = Math.max(MIN_CELL_SIZE, (int) (baseCellSize * zoomLevel));
         
         // Calculate starting position to center the grid
         int gridWidth = cellSize * gridCols;
