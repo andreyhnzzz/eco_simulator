@@ -193,8 +193,5 @@ public class PathfindingTest {
         // Verify the move is valid (within bounds)
         assertTrue(nextMove[0] >= 0 && nextMove[0] < 5, "Move row should be within grid");
         assertTrue(nextMove[1] >= 0 && nextMove[1] < 5, "Move col should be within grid");
-        
-        // Move should not go out of bounds (prey was at row 0, can't go to -1)
-        assertTrue(nextMove[0] >= 0, "Move should stay within grid bounds");
     }
 }

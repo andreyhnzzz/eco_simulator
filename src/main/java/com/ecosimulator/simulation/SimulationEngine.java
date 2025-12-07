@@ -485,7 +485,7 @@ public class SimulationEngine {
         if (nextMove != null) {
             CellType targetCell = grid[nextMove[0]][nextMove[1]];
             // Allow movement to empty cells, water, or food (but not other creatures/corpses)
-            if (targetCell == CellType.EMPTY || targetCell == CellType.WATER || targetCell == CellType.FOOD) {
+            if (isMovableCell(targetCell)) {
                 moveCreature(prey, nextMove[0], nextMove[1], currentRow, currentCol);
                 // If moved to water or food, consume it
                 if (targetCell == CellType.WATER) {
@@ -504,6 +504,14 @@ public class SimulationEngine {
         }
         
         return false;
+    }
+    
+    /**
+     * Check if a cell is movable (empty, water, or food).
+     * Creatures cannot move to cells occupied by other creatures or corpses.
+     */
+    private boolean isMovableCell(CellType cellType) {
+        return cellType == CellType.EMPTY || cellType == CellType.WATER || cellType == CellType.FOOD;
     }
     
     /**
