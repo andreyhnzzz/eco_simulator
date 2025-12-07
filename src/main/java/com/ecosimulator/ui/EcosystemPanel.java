@@ -5,16 +5,22 @@ import com.ecosimulator.model.Cell;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 
 /**
- * Panel that renders the 10x10 ecosystem grid with dynamic scaling
+ * Panel that renders the 10x10 ecosystem grid with dynamic scaling and zoom support
  */
 public class EcosystemPanel extends JPanel {
     
     private static final int MIN_CELL_SIZE = 30;
     private static final int DEFAULT_CELL_SIZE = 50;
+    private static final int MAX_CELL_SIZE = 100;
     private static final int GRID_MARGIN = 20; // Margin around the grid
+    private static final double ZOOM_FACTOR = 1.1; // 10% zoom per scroll
+    
     private Ecosystem ecosystem;
+    private double zoomLevel = 1.0; // Current zoom level (1.0 = 100%)
     
     public EcosystemPanel() {
         setPreferredSize(new Dimension(
@@ -22,6 +28,66 @@ public class EcosystemPanel extends JPanel {
             DEFAULT_CELL_SIZE * Ecosystem.GRID_SIZE + GRID_MARGIN
         ));
         setBackground(Color.WHITE);
+        
+        // Add tooltip to inform users about zoom feature
+        setToolTipText("Use mouse wheel to zoom in/out");
+        
+        // Add mouse wheel listener for zoom functionality
+        addMouseWheelListener(new MouseWheelListener() {
+            @Override
+            public void mouseWheelMoved(MouseWheelEvent e) {
+                // Zoom in when scrolling up (negative rotation), zoom out when scrolling down (positive)
+                if (e.getWheelRotation() < 0) {
+                    // Zoom in
+                    zoomLevel *= ZOOM_FACTOR;
+                    if (zoomLevel > 3.0) { // Max zoom 300%
+                        zoomLevel = 3.0;
+                    }
+                } else {
+                    // Zoom out
+                    zoomLevel /= ZOOM_FACTOR;
+                    if (zoomLevel < 0.5) { // Min zoom 50%
+                        zoomLevel = 0.5;
+                    }
+                }
+                
+                // Update preferred size based on zoom level
+                int zoomedWidth = (int) ((DEFAULT_CELL_SIZE * Ecosystem.GRID_SIZE + GRID_MARGIN) * zoomLevel);
+                int zoomedHeight = (int) ((DEFAULT_CELL_SIZE * Ecosystem.GRID_SIZE + GRID_MARGIN) * zoomLevel);
+                setPreferredSize(new Dimension(zoomedWidth, zoomedHeight));
+                
+                // Update tooltip to show current zoom level
+                setToolTipText(String.format("Zoom: %.0f%% (Use mouse wheel to zoom)", zoomLevel * 100));
+                
+                // Notify parent container to update scrollbars
+                revalidate();
+                repaint();
+            }
+        });
+    }
+    
+    /**
+     * Get current zoom level
+     * @return zoom level (1.0 = 100%)
+     */
+    public double getZoomLevel() {
+        return zoomLevel;
+    }
+    
+    /**
+     * Set zoom level programmatically
+     * @param level zoom level (0.5 to 3.0)
+     */
+    public void setZoomLevel(double level) {
+        this.zoomLevel = Math.max(0.5, Math.min(3.0, level));
+        
+        // Update preferred size based on zoom level
+        int zoomedWidth = (int) ((DEFAULT_CELL_SIZE * Ecosystem.GRID_SIZE + GRID_MARGIN) * zoomLevel);
+        int zoomedHeight = (int) ((DEFAULT_CELL_SIZE * Ecosystem.GRID_SIZE + GRID_MARGIN) * zoomLevel);
+        setPreferredSize(new Dimension(zoomedWidth, zoomedHeight));
+        
+        revalidate();
+        repaint();
     }
     
     public void setEcosystem(Ecosystem ecosystem) {
@@ -40,21 +106,25 @@ public class EcosystemPanel extends JPanel {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         
-        // Calculate dynamic cell size based on available space
+        // Calculate dynamic cell size based on available space and zoom level
         int width = getWidth();
         int height = getHeight();
         int gridCols = Ecosystem.GRID_SIZE;
         int gridRows = Ecosystem.GRID_SIZE;
         
-        // Calculate cell size that fits in the available space
+        // Calculate base cell size that fits in the available space
         // Guard against division by zero and ensure positive dimensions
-        int cellSize = MIN_CELL_SIZE;
+        int baseCellSize = MIN_CELL_SIZE;
         if (gridCols > 0 && gridRows > 0 && width > GRID_MARGIN && height > GRID_MARGIN) {
-            cellSize = Math.max(MIN_CELL_SIZE, Math.min(
+            baseCellSize = Math.max(MIN_CELL_SIZE, Math.min(
                 (width - GRID_MARGIN) / gridCols,
                 (height - GRID_MARGIN) / gridRows
             ));
         }
+        
+        // Apply zoom level to cell size
+        int cellSize = (int) (baseCellSize * zoomLevel);
+        cellSize = Math.max(MIN_CELL_SIZE, Math.min(cellSize, MAX_CELL_SIZE));
         
         // Calculate starting position to center the grid
         int gridWidth = cellSize * gridCols;
