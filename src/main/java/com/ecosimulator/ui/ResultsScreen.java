@@ -655,9 +655,8 @@ public class ResultsScreen extends StackPane {
             
             // Store the report path and enable the send button
             lastGeneratedReportPath = reportPath;
-            if (sendReportButton != null) {
-                sendReportButton.setDisable(false);
-            }
+            // Button should always be initialized by this point, but check for safety
+            sendReportButton.setDisable(false);
             
             showNotification("PDF Exported! 📄", "Report saved to: " + reportPath, Alert.AlertType.INFORMATION);
         } catch (IOException e) {
@@ -680,7 +679,7 @@ public class ResultsScreen extends StackPane {
         try {
             File reportFile = new File(lastGeneratedReportPath);
             if (!reportFile.exists()) {
-                showNotification("Report Not Found", "The generated report file no longer exists: " + lastGeneratedReportPath, Alert.AlertType.ERROR);
+                showNotification("Report Not Found", "The generated report file no longer exists. Please generate a new report.", Alert.AlertType.ERROR);
                 lastGeneratedReportPath = null;
                 sendReportButton.setDisable(true);
                 return;
