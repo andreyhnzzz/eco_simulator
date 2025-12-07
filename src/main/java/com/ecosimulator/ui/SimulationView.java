@@ -672,15 +672,11 @@ public class SimulationView extends BorderPane {
         }
         
         // Reset consecutive simulation mode
-        consecutiveSimulationMode = false;
-        currentSimulationNumber = 0;
-        multiSimulationReport.clear();
+        resetConsecutiveSimulationState();
         
         startButton.setDisable(false);
         pauseButton.setDisable(true);
         pauseButton.setText("⏸ Pausar");
-        nextSimulationButton.setDisable(true);
-        stopAndReportButton.setDisable(true);
         scenarioComboBox.setDisable(false);
         thirdSpeciesCheckBox.setDisable(false);
         mutationsCheckBox.setDisable(false);
@@ -1027,9 +1023,9 @@ public class SimulationView extends BorderPane {
                 multiSimulationReport.addSimulation(simResult);
                 
                 // Update status and enable next simulation
-                statusLabel.setText(String.format("✅ Simulación #%d terminada: %s | Total: %d simulaciones", 
+                statusLabel.setText(String.format("✅ Simulación #%d terminada: %s | Total: %s", 
                                                  currentSimulationNumber, result, 
-                                                 multiSimulationReport.getSimulationCount()));
+                                                 getSimulationCountText(multiSimulationReport.getSimulationCount())));
                 nextSimulationButton.setDisable(false);
                 stopAndReportButton.setDisable(false);
                 pauseButton.setDisable(true);
@@ -1061,21 +1057,33 @@ public class SimulationView extends BorderPane {
     }
 
     /**
+     * Reset consecutive simulation state to defaults
+     */
+    private void resetConsecutiveSimulationState() {
+        consecutiveSimulationMode = false;
+        currentSimulationNumber = 0;
+        multiSimulationReport.clear();
+        nextSimulationButton.setDisable(true);
+        stopAndReportButton.setDisable(true);
+    }
+    
+    /**
+     * Helper method to get properly pluralized simulation count text
+     */
+    private String getSimulationCountText(int count) {
+        return count == 1 ? "1 simulación" : count + " simulaciones";
+    }
+    
+    /**
      * Start a new simulation in consecutive mode
      */
     private void startNextSimulation() {
-        // Cycle through scenarios automatically
+        // Cycle through scenarios automatically using enum ordinal
         Scenario[] scenarios = Scenario.values();
         Scenario currentScenario = scenarioComboBox.getValue();
-        int currentIndex = -1;
-        for (int i = 0; i < scenarios.length; i++) {
-            if (scenarios[i] == currentScenario) {
-                currentIndex = i;
-                break;
-            }
-        }
         
-        // Move to next scenario, wrapping around
+        // Use ordinal for cleaner code - handles null safely by defaulting to 0
+        int currentIndex = (currentScenario != null) ? currentScenario.ordinal() : -1;
         int nextIndex = (currentIndex + 1) % scenarios.length;
         scenarioComboBox.setValue(scenarios[nextIndex]);
         
@@ -1115,9 +1123,8 @@ public class SimulationView extends BorderPane {
             return;
         }
         
-        consecutiveSimulationMode = false;
-        nextSimulationButton.setDisable(true);
-        stopAndReportButton.setDisable(true);
+        // Reset state
+        resetConsecutiveSimulationState();
         startButton.setDisable(false);
         scenarioComboBox.setDisable(false);
         thirdSpeciesCheckBox.setDisable(false);
@@ -1141,9 +1148,10 @@ public class SimulationView extends BorderPane {
                 File reportFile = new File(reportPath);
                 LOGGER.info("Multi-simulation PDF report generated: " + reportPath);
                 
+                int totalSimulations = multiSimulationReport.getSimulationCount();
                 Platform.runLater(() -> {
-                    statusLabel.setText(String.format("✅ Reporte generado: %d simulaciones", 
-                                                    multiSimulationReport.getSimulationCount()));
+                    statusLabel.setText(String.format("✅ Reporte generado: %s", 
+                                                    getSimulationCountText(totalSimulations)));
                     
                     // Send email if logged in
                     if (Session.isLoggedIn()) {
@@ -1151,28 +1159,24 @@ public class SimulationView extends BorderPane {
                         if (currentUser != null && currentUser.getEmail() != null && !currentUser.getEmail().isEmpty()) {
                             String userEmail = currentUser.getEmail();
                             String subject = "Eco Simulator - Multi-Simulation Report";
-                            String body = String.format("Hello %s,\n\nAttached is your multi-simulation report with %d simulations.\n\nBest regards,\nEco Simulator",
-                                                      currentUser.getName(), multiSimulationReport.getSimulationCount());
+                            String body = String.format("Hello %s,\n\nAttached is your multi-simulation report with %s.\n\nBest regards,\nEco Simulator",
+                                                      currentUser.getName(), getSimulationCountText(totalSimulations));
                             
                             boolean emailSent = emailService.sendReport(userEmail, reportFile, subject, body);
                             showEmailNotification(emailSent, userEmail, reportPath);
                         } else {
                             showNotification("📄 Reporte Guardado", 
-                                           String.format("Reporte multi-simulación guardado en: %s\n%d simulaciones incluidas", 
-                                                        reportPath, multiSimulationReport.getSimulationCount()), 
+                                           String.format("Reporte multi-simulación guardado en: %s\n%s incluidas", 
+                                                        reportPath, getSimulationCountText(totalSimulations)), 
                                            Alert.AlertType.INFORMATION);
                         }
                     } else {
                         showNotification("📄 Reporte Guardado", 
-                                       String.format("Reporte multi-simulación guardado en: %s\n%d simulaciones incluidas", 
-                                                    reportPath, multiSimulationReport.getSimulationCount()), 
+                                       String.format("Reporte multi-simulación guardado en: %s\n%s incluidas", 
+                                                    reportPath, getSimulationCountText(totalSimulations)), 
                                        Alert.AlertType.INFORMATION);
                     }
                 });
-                
-                // Clear the report for next sequence
-                multiSimulationReport.clear();
-                currentSimulationNumber = 0;
                 
             } catch (IOException e) {
                 LOGGER.log(Level.WARNING, "Failed to generate multi-simulation PDF report", e);

@@ -272,11 +272,12 @@ public class PDFReportGenerator {
      * @param outputPath path where the PDF will be saved
      * @param report the multi-simulation report containing all simulation results
      * @throws IOException if PDF generation fails
+     * @throws IllegalStateException if report is empty
      */
     public static void generateMultiSimulationReport(String outputPath, MultiSimulationReport report) 
             throws IOException {
         if (report.isEmpty()) {
-            throw new IllegalArgumentException("Cannot generate report with no simulations");
+            throw new IllegalStateException("Cannot generate report with no simulations");
         }
         
         try (PDDocument document = new PDDocument()) {

@@ -65,7 +65,7 @@ public class SimulationResult {
     public String getConfigDescription() {
         StringBuilder desc = new StringBuilder(scenario.getDisplayName());
         if (hasThirdSpecies) {
-            desc.append(" + Tercer Especie");
+            desc.append(" + Tercera Especie");
         }
         if (hasMutations) {
             desc.append(" + Mutaciones");

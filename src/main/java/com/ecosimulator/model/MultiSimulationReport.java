@@ -11,7 +11,7 @@ import java.util.List;
  */
 public class MultiSimulationReport {
     private final List<SimulationResult> results;
-    private final LocalDateTime reportTimestamp;
+    private LocalDateTime reportTimestamp;
     
     public MultiSimulationReport() {
         this.results = new ArrayList<>();
@@ -54,10 +54,11 @@ public class MultiSimulationReport {
     }
     
     /**
-     * Clear all simulation results
+     * Clear all simulation results and reset timestamp
      */
     public void clear() {
         results.clear();
+        this.reportTimestamp = LocalDateTime.now();
     }
     
     /**
