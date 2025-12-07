@@ -28,6 +28,10 @@ module com.ecosimulator {
     requires com.google.api.client.extensions.java6.auth; // google-oauth-client-java6
     requires com.google.api.client.extensions.jetty.auth; // google-oauth-client-jetty
     requires com.google.api.services.gmail; // google-api-services-gmail
+    
+    // Required for LocalServerReceiver in OAuth flow (com.sun.net.httpserver.HttpHandler)
+    // This JDK module provides the HTTP server implementation used by Google OAuth client
+    requires jdk.httpserver;
 
     opens com.ecosimulator to javafx.fxml;
     opens com.ecosimulator.ui to javafx.fxml;
