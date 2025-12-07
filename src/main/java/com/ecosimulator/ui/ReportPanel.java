@@ -23,7 +23,9 @@ public class ReportPanel extends JPanel {
     private void initializeUI() {
         setLayout(new BorderLayout(5, 5));
         setBorder(BorderFactory.createTitledBorder("Statistics"));
-        setPreferredSize(new Dimension(250, 600));
+        // Use minimum and preferred sizes for better responsiveness
+        setMinimumSize(new Dimension(250, 400));
+        setPreferredSize(new Dimension(300, 600));
         
         JPanel fieldsPanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
