@@ -62,7 +62,7 @@ public class EmailService {
         this.useStartTls = true;
         this.useSsl = false;
         this.useOAuth = false;
-        this.oauthCredentialsPath = "credentials.json";
+        this.oauthCredentialsPath = null; // Will use resource path by default
         loadConfiguration();
     }
 

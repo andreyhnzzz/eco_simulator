@@ -99,20 +99,25 @@ User Initiates Email Send
 
 ```
 eco_simulator/
-├── credentials.json          (User's OAuth credentials - NOT in git)
-├── credentials.json.example  (Template for users)
 ├── GMAIL_OAUTH_SETUP.md     (Setup instructions)
 ├── tokens/                   (OAuth tokens - NOT in git)
 │   └── StoredCredential      (Generated on first auth)
 ├── reports/
 │   └── failed_emails/        (Failed emails as .eml files)
-└── src/main/java/com/ecosimulator/
-    ├── service/
-    │   └── EmailService.java         (Extended with OAuth)
-    ├── ui/
-    │   └── SMTPSettingsController.java (Enhanced UI)
-    └── util/
-        └── OAuthUtils.java           (OAuth helper)
+└── src/
+    └── main/
+        ├── java/com/ecosimulator/
+        │   ├── service/
+        │   │   └── EmailService.java         (Extended with OAuth)
+        │   ├── ui/
+        │   │   └── SMTPSettingsController.java (Enhanced UI)
+        │   └── util/
+        │       └── OAuthUtils.java           (OAuth helper)
+        └── resources/
+            └── oauth/
+                ├── credentials.json          (User's OAuth credentials - NOT in git)
+                ├── credentials.json.example  (Template for users)
+                └── README.md                 (OAuth directory guide)
 ```
 
 ## Usage
@@ -122,7 +127,8 @@ eco_simulator/
 1. **Setup OAuth (Recommended)**
    - Follow `GMAIL_OAUTH_SETUP.md`
    - Download `credentials.json` from Google Cloud
-   - Configure in app settings
+   - Place in `src/main/resources/oauth/` directory
+   - Alternatively, browse to select it from any location
    - Authenticate in browser (one-time)
 
 2. **Or Use Traditional SMTP**
@@ -167,6 +173,16 @@ boolean success = emailService.sendReport(recipientEmail, pdfFile, subject, body
    - No sensitive data in error messages
    - Comprehensive logging without exposing secrets
    - Graceful degradation with fallbacks
+
+### 📁 Credentials Location
+
+The application now supports credentials.json in two locations:
+1. **Resource path (Recommended)**: `src/main/resources/oauth/credentials.json`
+   - Embedded with the application
+   - Automatically detected if credentials path is not specified
+2. **External path**: Any file system location
+   - Browse and select in the settings dialog
+   - Useful for development or multiple configurations
 
 ### 🔒 CodeQL Results
 

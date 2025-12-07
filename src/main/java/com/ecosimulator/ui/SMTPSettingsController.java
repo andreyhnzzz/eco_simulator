@@ -174,7 +174,7 @@ public class SMTPSettingsController {
         
         Label credLabel = new Label("Credentials File:");
         oauthCredentialsField = new TextField();
-        oauthCredentialsField.setPromptText("credentials.json");
+        oauthCredentialsField.setPromptText("Leave empty to use src/main/resources/oauth/credentials.json");
         oauthCredentialsField.setPrefWidth(250);
         oauthCredentialsField.setEditable(false);
         
@@ -329,7 +329,7 @@ public class SMTPSettingsController {
             if (emailService.isUseOAuth()) {
                 oauthCheckBox.setSelected(true);
                 oauthCredentialsField.setText(emailService.getOauthCredentialsPath() != null ? 
-                    emailService.getOauthCredentialsPath() : "credentials.json");
+                    emailService.getOauthCredentialsPath() : "(using resource path)");
                 oauthFromAddressField.setText(emailService.getFromAddress() != null ? 
                     emailService.getFromAddress() : "");
                 toggleAuthMethod(); // Show OAuth fields
@@ -412,7 +412,7 @@ public class SMTPSettingsController {
             String fromEmail = oauthFromAddressField.getText().trim();
             
             if (credPath.isEmpty()) {
-                credPath = "credentials.json"; // Default
+                credPath = null; // Will use resource path by default
             }
             
             emailService.configureOAuth(credPath, fromEmail);
@@ -449,12 +449,14 @@ public class SMTPSettingsController {
             String fromEmail = oauthFromAddressField.getText().trim();
             
             if (credPath.isEmpty()) {
-                configValid = false;
-                errorMessage = "Please select a credentials.json file.";
+                // Empty path is ok - will use resource path
+                credPath = null;
             } else if (!new java.io.File(credPath).exists()) {
                 configValid = false;
                 errorMessage = "Credentials file not found: " + credPath;
-            } else if (fromEmail.isEmpty()) {
+            }
+            
+            if (fromEmail.isEmpty()) {
                 configValid = false;
                 errorMessage = "Please enter your Gmail address.";
             }
