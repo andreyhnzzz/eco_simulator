@@ -428,13 +428,17 @@ public class SimulationEngine {
         }
         
         // Use Dijkstra to find and move towards nearest prey (within search range)
-        int searchRange = 8; // Limit search to avoid too much computation
-        int[] nextMove = PathfindingUtils.findNextMove(grid, currentRow, currentCol, 
-                                                       CellType.PREY, searchRange, false);
-        
-        if (nextMove != null && grid[nextMove[0]][nextMove[1]] == CellType.EMPTY) {
-            moveCreature(predator, nextMove[0], nextMove[1], currentRow, currentCol);
-            return true;
+        // But only 70% of the time - add randomness for less efficiency
+        // Reduced search range to 5 to make predators less efficient
+        if (random.nextDouble() < 0.7) {
+            int searchRange = 5;
+            int[] nextMove = PathfindingUtils.findNextMove(grid, currentRow, currentCol, 
+                                                           CellType.PREY, searchRange, false);
+            
+            if (nextMove != null && grid[nextMove[0]][nextMove[1]] == CellType.EMPTY) {
+                moveCreature(predator, nextMove[0], nextMove[1], currentRow, currentCol);
+                return true;
+            }
         }
         
         return false;
@@ -643,10 +647,11 @@ public class SimulationEngine {
      */
     private int getMovementRange(Creature creature) {
         // Base movement range by creature type
+        // Reduced predator range to 1 to make them less efficient with Dijkstra pathfinding
         int baseRange = switch (creature.getType()) {
-            case PREDATOR -> 2;  // Predators can move 2 cells
-            case PREY -> 2;      // Prey can move 2 cells
-            case THIRD_SPECIES -> 3;  // Scavengers can move 3 cells (faster)
+            case PREDATOR -> 1;  // Predators move 1 cell (less efficient for longer simulations)
+            case PREY -> 2;      // Prey can move 2 cells (can escape better)
+            case THIRD_SPECIES -> 2;  // Scavengers can move 2 cells
             default -> 1;
         };
         
