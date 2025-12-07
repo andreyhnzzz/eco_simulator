@@ -18,6 +18,13 @@ Each scenario can be run with optional extensions:
 - **Tercer Especie (Third Species)**: Adds a third species that is an opportunistic hunter
 - **Mutaciones (Mutations)**: Enables random mutations that give creatures a 50% efficiency bonus
 
+### Consecutive Simulations (NEW!)
+- **Run Multiple Simulations**: Execute consecutive simulations with automatic scenario cycling
+- **Multi-Page PDF Reports**: Generate comprehensive reports with one page per simulation
+- **Progress Tracking**: Monitor simulation count and status in real-time
+- **Flexible Control**: Continue to next simulation or stop and generate report at any time
+- See [CONSECUTIVE_SIMULATIONS_GUIDE.md](CONSECUTIVE_SIMULATIONS_GUIDE.md) for detailed instructions
+
 ### Automatic Turn Execution
 - Turns are executed automatically using a timer
 - Adjustable speed from 100ms to 2000ms between turns
@@ -106,6 +113,23 @@ src/main/resources/
 4. Creatures lose energy each turn and die when energy reaches 0
 5. Creatures with enough energy can reproduce
 6. Mutated creatures have a 50% bonus to efficiency
+
+## OAuth2 Authentication for Gmail
+
+The application now supports Gmail OAuth2 authentication for secure email sending without password exposure. This is fully compatible with Java's module system (JPMS).
+
+### OAuth2 Setup
+1. Create a project in Google Cloud Console
+2. Enable Gmail API
+3. Configure OAuth consent screen
+4. Create OAuth 2.0 Client ID (Desktop app)
+5. Download credentials.json
+6. Place in `src/main/resources/oauth/` or configure custom path
+
+See [OAUTH_FIX_DOCUMENTATION.md](OAUTH_FIX_DOCUMENTATION.md) for detailed setup instructions and troubleshooting.
+
+### Module System Compatibility
+The application properly declares all required modules including `jdk.httpserver` for OAuth2 LocalServerReceiver support. This ensures compatibility with JPMS in Java 17+.
 
 ## Email Configuration
 
