@@ -6,6 +6,8 @@ import com.ecosimulator.persistence.EcosystemRepository;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -65,7 +67,9 @@ public class MainFrame extends JFrame {
         
         // Ecosystem panel (top)
         ecosystemPanel = new EcosystemPanel();
-        centerSplitPane.setTopComponent(new JScrollPane(ecosystemPanel));
+        JScrollPane ecosystemScrollPane = new JScrollPane(ecosystemPanel);
+        ecosystemScrollPane.setPreferredSize(new Dimension(800, 600));
+        centerSplitPane.setTopComponent(ecosystemScrollPane);
         
         // Controls panel (bottom)
         controlsPanel = new ControlsPanel();
@@ -85,11 +89,39 @@ public class MainFrame extends JFrame {
         
         mainPanel.add(centerSplitPane, BorderLayout.CENTER);
         
-        // Right panel: Report/stats
+        // Right panel: Report/stats with fixed width
         reportPanel = new ReportPanel();
-        mainPanel.add(new JScrollPane(reportPanel), BorderLayout.EAST);
+        JScrollPane reportScrollPane = new JScrollPane(reportPanel);
+        reportScrollPane.setPreferredSize(new Dimension(300, 600));
+        mainPanel.add(reportScrollPane, BorderLayout.EAST);
         
         add(mainPanel);
+        
+        // Add component listener for window resize handling
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                // Get current window dimensions
+                int windowWidth = getWidth();
+                int windowHeight = getHeight();
+                
+                // Update ecosystem panel size (subtract space for borders and report panel)
+                int availableWidth = windowWidth - 300 - 40; // 300 for report, 40 for margins
+                int availableHeight = (int) (windowHeight * 0.7) - 80; // 70% for ecosystem, 80 for margins
+                
+                ecosystemScrollPane.setPreferredSize(new Dimension(availableWidth, availableHeight));
+                
+                // Update report panel height
+                reportScrollPane.setPreferredSize(new Dimension(300, windowHeight - 80));
+                
+                // Revalidate and repaint to apply changes
+                mainPanel.revalidate();
+                ecosystemPanel.revalidate();
+                ecosystemPanel.repaint();
+                reportPanel.revalidate();
+                reportPanel.repaint();
+            }
+        });
     }
     
     private void setupCallbacks() {

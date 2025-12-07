@@ -7,15 +7,16 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * Panel that renders the 10x10 ecosystem grid
+ * Panel that renders the 10x10 ecosystem grid with dynamic scaling
  */
 public class EcosystemPanel extends JPanel {
     
-    private static final int CELL_SIZE = 50;
+    private static final int MIN_CELL_SIZE = 30;
+    private static final int DEFAULT_CELL_SIZE = 50;
     private Ecosystem ecosystem;
     
     public EcosystemPanel() {
-        setPreferredSize(new Dimension(CELL_SIZE * 10 + 20, CELL_SIZE * 10 + 20));
+        setPreferredSize(new Dimension(DEFAULT_CELL_SIZE * 10 + 20, DEFAULT_CELL_SIZE * 10 + 20));
         setBackground(Color.WHITE);
     }
     
@@ -35,12 +36,30 @@ public class EcosystemPanel extends JPanel {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         
+        // Calculate dynamic cell size based on available space
+        int width = getWidth();
+        int height = getHeight();
+        int gridCols = Ecosystem.GRID_SIZE;
+        int gridRows = Ecosystem.GRID_SIZE;
+        
+        // Calculate cell size that fits in the available space
+        int cellSize = Math.max(MIN_CELL_SIZE, Math.min(
+            (width - 20) / gridCols,
+            (height - 20) / gridRows
+        ));
+        
+        // Calculate starting position to center the grid
+        int gridWidth = cellSize * gridCols;
+        int gridHeight = cellSize * gridRows;
+        int startX = Math.max(10, (width - gridWidth) / 2);
+        int startY = Math.max(10, (height - gridHeight) / 2);
+        
         Cell[][] grid = ecosystem.getGrid();
         
         for (int i = 0; i < Ecosystem.GRID_SIZE; i++) {
             for (int j = 0; j < Ecosystem.GRID_SIZE; j++) {
-                int x = j * CELL_SIZE + 10;
-                int y = i * CELL_SIZE + 10;
+                int x = startX + j * cellSize;
+                int y = startY + i * cellSize;
                 
                 Cell cell = grid[i][j];
                 
@@ -64,16 +83,18 @@ public class EcosystemPanel extends JPanel {
                     }
                 }
                 
-                g2d.fillRect(x, y, CELL_SIZE - 2, CELL_SIZE - 2);
+                g2d.fillRect(x, y, cellSize - 2, cellSize - 2);
                 
                 // Draw cell border
                 g2d.setColor(Color.GRAY);
-                g2d.drawRect(x, y, CELL_SIZE - 2, CELL_SIZE - 2);
+                g2d.drawRect(x, y, cellSize - 2, cellSize - 2);
                 
                 // Draw icon/text
                 if (!cell.isEmpty()) {
                     g2d.setColor(Color.WHITE);
-                    g2d.setFont(new Font("Arial", Font.BOLD, 12));
+                    // Scale font size based on cell size
+                    int fontSize = Math.max(10, cellSize / 4);
+                    g2d.setFont(new Font("Arial", Font.BOLD, fontSize));
                     
                     String label = "";
                     String type = cell.getType();
@@ -90,8 +111,8 @@ public class EcosystemPanel extends JPanel {
                     }
                     
                     FontMetrics fm = g2d.getFontMetrics();
-                    int textX = x + (CELL_SIZE - fm.stringWidth(label)) / 2;
-                    int textY = y + (CELL_SIZE + fm.getAscent()) / 2;
+                    int textX = x + (cellSize - fm.stringWidth(label)) / 2;
+                    int textY = y + (cellSize + fm.getAscent()) / 2 - 2;
                     
                     g2d.drawString(label, textX, textY);
                 }
