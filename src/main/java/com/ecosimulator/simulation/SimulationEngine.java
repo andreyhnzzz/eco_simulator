@@ -300,6 +300,7 @@ public class SimulationEngine {
 
     /**
      * Process creature movement, hunting/eating, and scavenging using Dijkstra pathfinding
+     * ALWAYS seek food and water - this is unconditional until death
      */
     private void processCreatureAction(Creature creature, List<Creature> newCreatures, 
                                         List<Creature> deadCreatures, List<Corpse> consumedCorpses) {
@@ -334,9 +335,14 @@ public class SimulationEngine {
             }
         }
 
-        // Priority 3: Scavengers prioritize corpses when not critically hungry/thirsty
+        // Priority 3: Scavengers ALWAYS seek corpses or water (unconditional)
         if (creature.getType() == CellType.THIRD_SPECIES) {
+            // Try corpses first
             if (processScavengerActionWithPathfinding(creature, consumedCorpses, row, col, neighbors)) {
+                return;
+            }
+            // Then always try water (unconditional for scavengers)
+            if (seekAndConsumeResourceWithPathfinding(creature, CellType.WATER, row, col, neighbors)) {
                 return;
             }
         }
@@ -348,26 +354,28 @@ public class SimulationEngine {
             }
         }
 
-        // Priority 5: Normal hunting/eating behavior with pathfinding
+        // Priority 5: Predators ALWAYS hunt prey (unconditional)
         if (creature.getType() == CellType.PREDATOR) {
             if (huntPreyWithPathfinding(creature, deadCreatures, row, col, neighbors)) {
                 return;
             }
         }
 
-        // Priority 6: Opportunistically consume nearby resources
-        if (creature.getThirst() > 30) {
+        // Priority 6: ALWAYS seek water when thirsty (unconditional for all creatures)
+        if (creature.getThirst() > 0) {
             if (seekAndConsumeResourceWithPathfinding(creature, CellType.WATER, row, col, neighbors)) {
                 return;
             }
         }
-        if (creature.getHunger() > 30 && creature.getType() == CellType.PREY) {
+        
+        // Priority 7: Prey ALWAYS seek food (unconditional)
+        if (creature.getType() == CellType.PREY && creature.getHunger() > 0) {
             if (seekAndConsumeResourceWithPathfinding(creature, CellType.FOOD, row, col, neighbors)) {
                 return;
             }
         }
 
-        // Priority 7: Move to empty cell (random movement as fallback)
+        // Priority 8: Move to empty cell (random movement as fallback)
         for (int[] neighbor : neighbors) {
             CellType cellType = grid[neighbor[0]][neighbor[1]];
             if (cellType == CellType.EMPTY) {

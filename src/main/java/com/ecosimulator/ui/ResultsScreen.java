@@ -58,6 +58,9 @@ public class ResultsScreen extends StackPane {
     private String lastGeneratedReportPath = null;
     private Button sendReportButton;
     
+    // Callback for next simulation
+    private Runnable onNextSimulation;
+    
     // Particle effect container
     private Pane particleContainer;
     private List<Circle> particles = new ArrayList<>();
@@ -372,8 +375,20 @@ public class ResultsScreen extends StackPane {
         container.setAlignment(Pos.CENTER);
         container.setPadding(new Insets(20, 0, 0, 0));
         
-        // Export PDF button (renamed from "Export PDF" to "Finish Simulation and Make Report")
-        Button exportButton = new Button("📄 Finish Simulation and Make Report");
+        // Next Simulation button (NEW - for consecutive simulations)
+        Button nextSimButton = new Button("➡️ Next Simulation");
+        nextSimButton.getStyleClass().addAll("action-button", "start-button");
+        nextSimButton.setOnAction(e -> {
+            AnimationUtils.playButtonClickAnimation(nextSimButton);
+            if (onNextSimulation != null) {
+                onNextSimulation.run();
+            }
+            closeScreen();
+        });
+        AnimationUtils.applyButtonHoverAnimation(nextSimButton);
+        
+        // Export PDF button (renamed from "Export PDF" to "Finish Simulation and Generate Report")
+        Button exportButton = new Button("📄 Finish Simulation and Generate Report");
         exportButton.getStyleClass().addAll("action-button", "reset-button");
         exportButton.setOnAction(e -> {
             AnimationUtils.playButtonClickAnimation(exportButton);
@@ -400,7 +415,7 @@ public class ResultsScreen extends StackPane {
         });
         AnimationUtils.applyButtonHoverAnimation(closeButton);
         
-        container.getChildren().addAll(exportButton, sendReportButton, closeButton);
+        container.getChildren().addAll(nextSimButton, exportButton, sendReportButton, closeButton);
         return container;
     }
     
@@ -749,9 +764,10 @@ public class ResultsScreen extends StackPane {
      * @param gridSize the grid size
      * @param extinctionTurn the extinction turn (-1 if none)
      * @param emailService optional email service
+     * @param onNextSimulation optional callback for next simulation button
      */
     public static void showResultsDialog(Stage owner, SimulationStats stats, int gridSize, 
-                                          int extinctionTurn, EmailService emailService) {
+                                          int extinctionTurn, EmailService emailService, Runnable onNextSimulation) {
         Stage dialog = new Stage();
         dialog.initModality(Modality.APPLICATION_MODAL);
         dialog.initOwner(owner);
@@ -760,6 +776,7 @@ public class ResultsScreen extends StackPane {
         dialog.setResizable(true);
         
         ResultsScreen resultsScreen = new ResultsScreen(stats, gridSize, extinctionTurn, emailService);
+        resultsScreen.onNextSimulation = onNextSimulation;
         
         Scene scene = new Scene(resultsScreen, 1100, 850);
         ThemeManager.applyCurrentTheme(scene);
@@ -776,6 +793,19 @@ public class ResultsScreen extends StackPane {
     }
     
     /**
+     * Show the results screen as a modal dialog (with callback)
+     * @param owner the owner stage
+     * @param stats the simulation statistics
+     * @param gridSize the grid size
+     * @param extinctionTurn the extinction turn (-1 if none)
+     * @param emailService optional email service
+     */
+    public static void showResultsDialog(Stage owner, SimulationStats stats, int gridSize, 
+                                          int extinctionTurn, EmailService emailService) {
+        showResultsDialog(owner, stats, gridSize, extinctionTurn, emailService, null);
+    }
+    
+    /**
      * Show the results screen as a modal dialog (simpler version)
      * @param owner the owner stage
      * @param stats the simulation statistics
@@ -783,6 +813,6 @@ public class ResultsScreen extends StackPane {
      * @param extinctionTurn the extinction turn (-1 if none)
      */
     public static void showResultsDialog(Stage owner, SimulationStats stats, int gridSize, int extinctionTurn) {
-        showResultsDialog(owner, stats, gridSize, extinctionTurn, null);
+        showResultsDialog(owner, stats, gridSize, extinctionTurn, null, null);
     }
 }

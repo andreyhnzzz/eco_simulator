@@ -370,7 +370,7 @@ public class PDFReportGenerator {
     }
     
     /**
-     * Add a page for a single simulation result
+     * Add a page for a single simulation result with charts
      */
     private static void addSimulationPage(PDDocument document, SimulationResult result,
                                          float pageWidth, float pageHeight) throws IOException {
@@ -444,6 +444,36 @@ public class PDFReportGenerator {
                 contentStream.showText(line);
                 contentStream.endText();
                 yPosition -= LINE_HEIGHT;
+            }
+            
+            yPosition -= 20;
+            
+            // Add Population Chart
+            Map<String, Integer> populationData = new LinkedHashMap<>();
+            populationData.put("Predators", stats.getPredatorCount());
+            populationData.put("Prey", stats.getPreyCount());
+            if (stats.getThirdSpeciesCount() > 0) {
+                populationData.put("Third Species", stats.getThirdSpeciesCount());
+            }
+            
+            BufferedImage populationChart = ChartGenerator.createPopulationChart(populationData);
+            PDImageXObject populationImage = LosslessFactory.createFromImage(document, populationChart);
+            
+            float imageWidth = 250;
+            float imageHeight = 188;
+            float imageX = (pageWidth - imageWidth) / 2;
+            
+            // Check if we need a new page for the chart
+            if (yPosition < imageHeight + MARGIN) {
+                PDPage newPage = new PDPage(PDRectangle.A4);
+                document.addPage(newPage);
+                yPosition = newPage.getMediaBox().getHeight() - MARGIN;
+                
+                try (PDPageContentStream newContentStream = new PDPageContentStream(document, newPage)) {
+                    newContentStream.drawImage(populationImage, imageX, yPosition - imageHeight, imageWidth, imageHeight);
+                }
+            } else {
+                contentStream.drawImage(populationImage, imageX, yPosition - imageHeight, imageWidth, imageHeight);
             }
         }
     }
