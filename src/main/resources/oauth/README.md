@@ -2,7 +2,21 @@
 
 This directory contains the OAuth2 credentials for Gmail API authentication.
 
-## Setup Instructions
+## Quick Setup (Recommended)
+
+1. **Copy the example file**
+   ```bash
+   cp credentials.json.example credentials.json
+   ```
+
+2. **Edit credentials.json** with your values from Google Cloud Console
+   - Replace `YOUR_CLIENT_ID` with your actual client ID
+   - Replace `YOUR_CLIENT_SECRET` with your actual client secret
+   - Replace `your-project-id` with your actual project ID
+
+3. **The application will automatically use this file** when OAuth is enabled
+
+## Full Setup Instructions
 
 1. **Download credentials from Google Cloud Console**
    - Go to [Google Cloud Console](https://console.cloud.google.com/)
@@ -38,6 +52,14 @@ You can also keep credentials outside the project:
 - Never share your credentials file publicly
 - Keep it secure on your local machine
 - If compromised, revoke access in Google Cloud Console and generate new credentials
+
+## Windows Portability
+
+This application is designed to run on any Windows environment without requiring specific directory paths:
+- All file paths use platform-independent separators
+- OAuth credentials are loaded from resources (bundled in JAR)
+- Tokens are stored in a relative `tokens/` directory
+- Reports are saved in relative `reports/` and `outgoing_reports/` directories
 
 ## Resources
 
