@@ -375,7 +375,7 @@ public class ResultsScreen extends StackPane {
         container.setAlignment(Pos.CENTER);
         container.setPadding(new Insets(20, 0, 0, 0));
         
-        // Next Simulation button (NEW - for consecutive simulations)
+        // Next Simulation button (only shown when in consecutive simulation mode)
         Button nextSimButton = new Button("➡️ Next Simulation");
         nextSimButton.getStyleClass().addAll("action-button", "start-button");
         nextSimButton.setOnAction(e -> {
@@ -415,7 +415,12 @@ public class ResultsScreen extends StackPane {
         });
         AnimationUtils.applyButtonHoverAnimation(closeButton);
         
-        container.getChildren().addAll(nextSimButton, exportButton, sendReportButton, closeButton);
+        // Only add Next Simulation button if callback is provided (consecutive mode)
+        if (onNextSimulation != null) {
+            container.getChildren().addAll(nextSimButton, exportButton, sendReportButton, closeButton);
+        } else {
+            container.getChildren().addAll(exportButton, sendReportButton, closeButton);
+        }
         return container;
     }
     

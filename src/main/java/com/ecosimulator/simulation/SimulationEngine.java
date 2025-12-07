@@ -361,15 +361,15 @@ public class SimulationEngine {
             }
         }
 
-        // Priority 6: ALWAYS seek water when thirsty (unconditional for all creatures)
-        if (creature.getThirst() > 0) {
+        // Priority 6: Seek water when thirsty (unconditional but with threshold to reduce pathfinding overhead)
+        if (creature.getThirst() > 10) {
             if (seekAndConsumeResourceWithPathfinding(creature, CellType.WATER, row, col, neighbors)) {
                 return;
             }
         }
         
-        // Priority 7: Prey ALWAYS seek food (unconditional)
-        if (creature.getType() == CellType.PREY && creature.getHunger() > 0) {
+        // Priority 7: Prey seek food (unconditional but with threshold to reduce pathfinding overhead)
+        if (creature.getType() == CellType.PREY && creature.getHunger() > 10) {
             if (seekAndConsumeResourceWithPathfinding(creature, CellType.FOOD, row, col, neighbors)) {
                 return;
             }
