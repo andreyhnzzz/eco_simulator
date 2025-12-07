@@ -146,8 +146,9 @@ public class OAuthUtils {
         try {
             Path tokensPath = Paths.get(TOKENS_DIRECTORY);
             if (Files.exists(tokensPath)) {
+                // Delete files in reverse order (children before parents)
                 Files.walk(tokensPath)
-                    .sorted((a, b) -> -a.compareTo(b))
+                    .sorted((a, b) -> b.compareTo(a)) // Reverse order for proper deletion
                     .map(Path::toFile)
                     .forEach(File::delete);
                 LOGGER.info("OAuth tokens cleared");

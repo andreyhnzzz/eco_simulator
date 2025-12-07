@@ -284,13 +284,15 @@ public class EmailService {
         // First attempt - use OAuth if enabled, otherwise SMTP
         boolean success;
         if (useOAuth) {
+            // OAuth has built-in fallback to SMTP, so no retry needed
             success = attemptSendWithOAuth(recipientEmail, pdf, subject, body);
         } else {
             success = attemptSend(recipientEmail, pdf, subject, body);
         }
         
         if (!success && !useOAuth) {
-            // Retry once after delay for SMTP (OAuth already has fallback)
+            // Retry once after delay for SMTP only
+            // (OAuth method already includes fallback to SMTP)
             LOGGER.info("First send attempt failed, retrying after " + RETRY_DELAY_MS + "ms...");
             try {
                 Thread.sleep(RETRY_DELAY_MS);
@@ -401,7 +403,8 @@ public class EmailService {
      */
     private MimeMessage createMimeMessage(String toEmail, String subject, String body, File attachment) throws MessagingException, IOException {
         Properties props = new Properties();
-        Session session = Session.getDefaultInstance(props, null);
+        // Use getInstance instead of getDefaultInstance to avoid singleton issues
+        Session session = Session.getInstance(props, null);
         
         MimeMessage message = new MimeMessage(session);
         message.setFrom(new InternetAddress(fromAddress));
@@ -452,9 +455,10 @@ public class EmailService {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         LOGGER.info("[" + timestamp + "] Attempting SMTP fallback for: " + toEmail);
         
-        // Check if SMTP is configured
-        if (smtpHost == null || smtpHost.isEmpty()) {
-            LOGGER.warning("[" + timestamp + "] SMTP not configured. Cannot send email.");
+        // Check if SMTP is properly configured (host, username, password)
+        if (smtpHost == null || smtpHost.isEmpty() || 
+            (username != null && !username.isEmpty() && (password == null || password.isEmpty()))) {
+            LOGGER.warning("[" + timestamp + "] SMTP not properly configured. Missing required fields.");
             // Save to failed emails directory
             saveFailedEmail(toEmail, subject, body);
             return false;

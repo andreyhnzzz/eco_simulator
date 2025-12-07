@@ -439,6 +439,42 @@ public class SMTPSettingsController {
     }
 
     private void saveAndClose() {
+        // Validate configuration before saving
+        boolean configValid = true;
+        String errorMessage = "";
+        
+        if (oauthCheckBox.isSelected()) {
+            // Validate OAuth configuration
+            String credPath = oauthCredentialsField.getText().trim();
+            String fromEmail = oauthFromAddressField.getText().trim();
+            
+            if (credPath.isEmpty()) {
+                configValid = false;
+                errorMessage = "Please select a credentials.json file.";
+            } else if (!new java.io.File(credPath).exists()) {
+                configValid = false;
+                errorMessage = "Credentials file not found: " + credPath;
+            } else if (fromEmail.isEmpty()) {
+                configValid = false;
+                errorMessage = "Please enter your Gmail address.";
+            }
+        } else {
+            // Validate SMTP configuration
+            if (hostField.getText().trim().isEmpty()) {
+                configValid = false;
+                errorMessage = "Please enter SMTP host.";
+            } else if (portField.getText().trim().isEmpty()) {
+                configValid = false;
+                errorMessage = "Please enter SMTP port.";
+            }
+        }
+        
+        if (!configValid) {
+            statusLabel.setText("❌ " + errorMessage);
+            statusLabel.setStyle("-fx-text-fill: red;");
+            return;
+        }
+        
         applyFormValues();
         
         // Save configuration to file (SMTP only - OAuth credentials are in separate file)
@@ -460,7 +496,8 @@ public class SMTPSettingsController {
             if (oauthCheckBox.isSelected()) {
                 message = "Your Gmail OAuth settings have been configured.\n\n" +
                          "Credentials are stored in: " + oauthCredentialsField.getText() + "\n" +
-                         "Tokens will be saved in: tokens/ directory";
+                         "Tokens will be saved in: tokens/ directory\n\n" +
+                         "Note: You'll need to authenticate in browser on first use.";
             } else {
                 message = "Your SMTP settings have been saved.\n\n" +
                          "Note: Password is not saved to disk for security.\n" +
