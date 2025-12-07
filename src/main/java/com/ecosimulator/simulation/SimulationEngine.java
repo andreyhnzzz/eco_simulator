@@ -4,6 +4,7 @@ import com.ecosimulator.model.*;
 import com.ecosimulator.persistence.SimulationPersistence;
 import com.ecosimulator.service.EventLogger;
 import com.ecosimulator.service.ReproductionManager;
+import com.ecosimulator.util.PathfindingUtils;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -298,7 +299,7 @@ public class SimulationEngine {
     }
 
     /**
-     * Process creature movement, hunting/eating, and scavenging
+     * Process creature movement, hunting/eating, and scavenging using Dijkstra pathfinding
      */
     private void processCreatureAction(Creature creature, List<Creature> newCreatures, 
                                         List<Creature> deadCreatures, List<Corpse> consumedCorpses) {
@@ -312,22 +313,22 @@ public class SimulationEngine {
 
         // Priority 1: Check if creature is critically thirsty (>70) - seek water immediately
         if (creature.getThirst() > 70) {
-            if (seekAndConsumeResource(creature, neighbors, CellType.WATER, row, col)) {
+            if (seekAndConsumeResourceWithPathfinding(creature, CellType.WATER, row, col, neighbors)) {
                 return;
             }
         }
 
         // Priority 2: Check if creature is critically hungry (>70) - seek food
         if (creature.getHunger() > 70) {
-            // Predators hunt prey when hungry
+            // Predators hunt prey when hungry using Dijkstra
             if (creature.getType() == CellType.PREDATOR) {
-                if (huntPrey(creature, neighbors, deadCreatures, row, col)) {
+                if (huntPreyWithPathfinding(creature, deadCreatures, row, col, neighbors)) {
                     return;
                 }
             }
             // Prey and scavengers seek food resources
             else if (creature.getType() == CellType.PREY) {
-                if (seekAndConsumeResource(creature, neighbors, CellType.FOOD, row, col)) {
+                if (seekAndConsumeResourceWithPathfinding(creature, CellType.FOOD, row, col, neighbors)) {
                     return;
                 }
             }
@@ -335,48 +336,38 @@ public class SimulationEngine {
 
         // Priority 3: Scavengers prioritize corpses when not critically hungry/thirsty
         if (creature.getType() == CellType.THIRD_SPECIES) {
-            if (processScavengerAction(creature, neighbors, consumedCorpses)) {
+            if (processScavengerActionWithPathfinding(creature, consumedCorpses, row, col, neighbors)) {
                 return;
             }
         }
 
-        // Priority 4: Normal hunting/eating behavior
-        CellType targetType = getTargetType(creature.getType());
-        if (targetType != null) {
-            for (int[] neighbor : neighbors) {
-                CellType cellType = grid[neighbor[0]][neighbor[1]];
-                if (cellType == targetType) {
-                    Creature prey = findCreatureAt(neighbor[0], neighbor[1]);
-                    if (prey != null && !deadCreatures.contains(prey)) {
-                        deadCreatures.add(prey);
-                        stats.recordDeath();
-                        eventLogger.logDeathByPredation(stats.getTurn(), prey, creature);
-                        creaturePositionMap.remove(positionKey(prey.getRow(), prey.getCol()));
-                        
-                        moveCreature(creature, neighbor[0], neighbor[1], row, col);
-                        creature.eat((int)(5 * creature.getMutationBonus()));
-                        creature.eatFood(); // Also reduces hunger
-                        turnEvents.append(creature.getIdString()).append(" hunted ")
-                                 .append(prey.getIdString()).append(". ");
-                        return;
-                    }
-                }
+        // Priority 4: Prey flee from nearby predators using Dijkstra
+        if (creature.getType() == CellType.PREY) {
+            if (fleeFromPredators(creature, row, col, neighbors)) {
+                return;
             }
         }
 
-        // Priority 5: Opportunistically consume nearby resources
+        // Priority 5: Normal hunting/eating behavior with pathfinding
+        if (creature.getType() == CellType.PREDATOR) {
+            if (huntPreyWithPathfinding(creature, deadCreatures, row, col, neighbors)) {
+                return;
+            }
+        }
+
+        // Priority 6: Opportunistically consume nearby resources
         if (creature.getThirst() > 30) {
-            if (seekAndConsumeResource(creature, neighbors, CellType.WATER, row, col)) {
+            if (seekAndConsumeResourceWithPathfinding(creature, CellType.WATER, row, col, neighbors)) {
                 return;
             }
         }
         if (creature.getHunger() > 30 && creature.getType() == CellType.PREY) {
-            if (seekAndConsumeResource(creature, neighbors, CellType.FOOD, row, col)) {
+            if (seekAndConsumeResourceWithPathfinding(creature, CellType.FOOD, row, col, neighbors)) {
                 return;
             }
         }
 
-        // Priority 6: Move to empty cell
+        // Priority 7: Move to empty cell (random movement as fallback)
         for (int[] neighbor : neighbors) {
             CellType cellType = grid[neighbor[0]][neighbor[1]];
             if (cellType == CellType.EMPTY) {
@@ -384,67 +375,6 @@ public class SimulationEngine {
                 return;
             }
         }
-    }
-
-    /**
-     * Seek and consume a resource (water or food)
-     */
-    private boolean seekAndConsumeResource(Creature creature, List<int[]> neighbors, 
-                                          CellType resourceType, int currentRow, int currentCol) {
-        for (int[] neighbor : neighbors) {
-            if (grid[neighbor[0]][neighbor[1]] == resourceType) {
-                // Move to resource and consume it
-                moveCreature(creature, neighbor[0], neighbor[1], currentRow, currentCol);
-                
-                if (resourceType == CellType.WATER) {
-                    int thirstBefore = creature.getThirst();
-                    creature.drink();
-                    stats.incrementWaterConsumed();
-                    eventLogger.logWaterConsumed(stats.getTurn(), creature, neighbor[0], neighbor[1], thirstBefore);
-                    turnEvents.append(creature.getIdString()).append(" drank water at (")
-                             .append(neighbor[0]).append(",").append(neighbor[1]).append("). ");
-                    // Respawn water after consumption
-                    grid[neighbor[0]][neighbor[1]] = CellType.WATER;
-                } else if (resourceType == CellType.FOOD) {
-                    int hungerBefore = creature.getHunger();
-                    creature.eatFood();
-                    stats.incrementFoodConsumed();
-                    eventLogger.logFoodConsumed(stats.getTurn(), creature, neighbor[0], neighbor[1], hungerBefore);
-                    turnEvents.append(creature.getIdString()).append(" ate food at (")
-                             .append(neighbor[0]).append(",").append(neighbor[1]).append("). ");
-                    // Respawn food after consumption
-                    grid[neighbor[0]][neighbor[1]] = CellType.FOOD;
-                }
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Hunt prey for predators
-     */
-    private boolean huntPrey(Creature predator, List<int[]> neighbors, 
-                            List<Creature> deadCreatures, int currentRow, int currentCol) {
-        for (int[] neighbor : neighbors) {
-            if (grid[neighbor[0]][neighbor[1]] == CellType.PREY) {
-                Creature prey = findCreatureAt(neighbor[0], neighbor[1]);
-                if (prey != null && !deadCreatures.contains(prey)) {
-                    deadCreatures.add(prey);
-                    stats.recordDeath();
-                    eventLogger.logDeathByPredation(stats.getTurn(), prey, predator);
-                    creaturePositionMap.remove(positionKey(prey.getRow(), prey.getCol()));
-                    
-                    moveCreature(predator, neighbor[0], neighbor[1], currentRow, currentCol);
-                    predator.eat((int)(5 * predator.getMutationBonus()));
-                    predator.eatFood(); // Hunting also reduces hunger significantly
-                    turnEvents.append(predator.getIdString()).append(" hunted ")
-                             .append(prey.getIdString()).append(". ");
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     /**
@@ -473,29 +403,150 @@ public class SimulationEngine {
     }
 
     /**
-     * Process scavenger-specific behavior - prioritize finding and eating corpses
+     * Hunt prey using Dijkstra pathfinding for more realistic hunting behavior
      */
-    private boolean processScavengerAction(Creature scavenger, List<int[]> neighbors, 
-                                           List<Corpse> consumedCorpses) {
-        int row = scavenger.getRow();
-        int col = scavenger.getCol();
-
-        // Look for corpses in neighboring cells
+    private boolean huntPreyWithPathfinding(Creature predator, List<Creature> deadCreatures,
+                                           int currentRow, int currentCol, List<int[]> neighbors) {
+        // First check if prey is in immediate neighbors (can catch immediately)
+        for (int[] neighbor : neighbors) {
+            if (grid[neighbor[0]][neighbor[1]] == CellType.PREY) {
+                Creature prey = findCreatureAt(neighbor[0], neighbor[1]);
+                if (prey != null && !deadCreatures.contains(prey)) {
+                    deadCreatures.add(prey);
+                    stats.recordDeath();
+                    eventLogger.logDeathByPredation(stats.getTurn(), prey, predator);
+                    creaturePositionMap.remove(positionKey(prey.getRow(), prey.getCol()));
+                    
+                    moveCreature(predator, neighbor[0], neighbor[1], currentRow, currentCol);
+                    predator.eat((int)(5 * predator.getMutationBonus()));
+                    predator.eatFood();
+                    turnEvents.append(predator.getIdString()).append(" hunted ")
+                             .append(prey.getIdString()).append(". ");
+                    return true;
+                }
+            }
+        }
+        
+        // Use Dijkstra to find and move towards nearest prey (within search range)
+        // But only 70% of the time - add randomness for less efficiency
+        // Reduced search range to 5 to make predators less efficient
+        if (random.nextDouble() < 0.7) {
+            int searchRange = 5;
+            int[] nextMove = PathfindingUtils.findNextMove(grid, currentRow, currentCol, 
+                                                           CellType.PREY, searchRange, false);
+            
+            if (nextMove != null && grid[nextMove[0]][nextMove[1]] == CellType.EMPTY) {
+                moveCreature(predator, nextMove[0], nextMove[1], currentRow, currentCol);
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Flee from predators using Dijkstra pathfinding for more realistic fleeing behavior
+     */
+    private boolean fleeFromPredators(Creature prey, int currentRow, int currentCol, 
+                                     List<int[]> neighbors) {
+        // Check if there are predators nearby (within detection range)
+        int detectionRange = 5; // Prey can detect predators within 5 cells
+        boolean predatorNearby = false;
+        
+        for (int r = Math.max(0, currentRow - detectionRange); 
+             r <= Math.min(grid.length - 1, currentRow + detectionRange); r++) {
+            for (int c = Math.max(0, currentCol - detectionRange); 
+                 c <= Math.min(grid[0].length - 1, currentCol + detectionRange); c++) {
+                if (grid[r][c] == CellType.PREDATOR) {
+                    predatorNearby = true;
+                    break;
+                }
+            }
+            if (predatorNearby) break;
+        }
+        
+        if (!predatorNearby) {
+            return false; // No need to flee
+        }
+        
+        // Use Dijkstra to find escape route (move away from predators)
+        int[] nextMove = PathfindingUtils.findNextMove(grid, currentRow, currentCol, 
+                                                       CellType.PREDATOR, detectionRange, true);
+        
+        if (nextMove != null && grid[nextMove[0]][nextMove[1]] == CellType.EMPTY) {
+            moveCreature(prey, nextMove[0], nextMove[1], currentRow, currentCol);
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Seek and consume resource using pathfinding
+     */
+    private boolean seekAndConsumeResourceWithPathfinding(Creature creature, CellType resourceType,
+                                                         int currentRow, int currentCol,
+                                                         List<int[]> neighbors) {
+        // First check immediate neighbors
+        for (int[] neighbor : neighbors) {
+            if (grid[neighbor[0]][neighbor[1]] == resourceType) {
+                moveCreature(creature, neighbor[0], neighbor[1], currentRow, currentCol);
+                
+                if (resourceType == CellType.WATER) {
+                    int thirstBefore = creature.getThirst();
+                    creature.drink();
+                    stats.incrementWaterConsumed();
+                    eventLogger.logWaterConsumed(stats.getTurn(), creature, neighbor[0], neighbor[1], thirstBefore);
+                    turnEvents.append(creature.getIdString()).append(" drank water at (")
+                             .append(neighbor[0]).append(",").append(neighbor[1]).append("). ");
+                    grid[neighbor[0]][neighbor[1]] = CellType.WATER;
+                } else if (resourceType == CellType.FOOD) {
+                    int hungerBefore = creature.getHunger();
+                    creature.eatFood();
+                    stats.incrementFoodConsumed();
+                    eventLogger.logFoodConsumed(stats.getTurn(), creature, neighbor[0], neighbor[1], hungerBefore);
+                    turnEvents.append(creature.getIdString()).append(" ate food at (")
+                             .append(neighbor[0]).append(",").append(neighbor[1]).append("). ");
+                    grid[neighbor[0]][neighbor[1]] = CellType.FOOD;
+                }
+                return true;
+            }
+        }
+        
+        // Use pathfinding to find resource within range
+        int searchRange = 10;
+        int[] nextMove = PathfindingUtils.findNextMove(grid, currentRow, currentCol, 
+                                                       resourceType, searchRange, false);
+        
+        if (nextMove != null && grid[nextMove[0]][nextMove[1]] == CellType.EMPTY) {
+            moveCreature(creature, nextMove[0], nextMove[1], currentRow, currentCol);
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Process scavenger action with pathfinding to find corpses
+     */
+    private boolean processScavengerActionWithPathfinding(Creature scavenger, 
+                                                         List<Corpse> consumedCorpses,
+                                                         int currentRow, int currentCol,
+                                                         List<int[]> neighbors) {
+        // First check immediate neighbors for corpses
         for (int[] neighbor : neighbors) {
             if (grid[neighbor[0]][neighbor[1]] == CellType.CORPSE) {
                 Corpse corpse = corpseMap.get(positionKey(neighbor[0], neighbor[1]));
                 if (corpse != null && !consumedCorpses.contains(corpse)) {
-                    // Consume the corpse
                     int energyGain = corpse.consume();
                     scavenger.eat((int)(energyGain * scavenger.getMutationBonus()));
                     consumedCorpses.add(corpse);
                     eventLogger.logScavenging(stats.getTurn(), scavenger, corpse);
                     turnEvents.append(scavenger.getIdString()).append(" scavenged ")
                              .append(corpse.getIdString()).append(". ");
-
-                    // Move to corpse position
-                    creaturePositionMap.remove(positionKey(row, col));
-                    grid[row][col] = CellType.EMPTY;
+                    
+                    creaturePositionMap.remove(positionKey(currentRow, currentCol));
+                    grid[currentRow][currentCol] = CellType.EMPTY;
                     scavenger.move(neighbor[0], neighbor[1]);
                     grid[neighbor[0]][neighbor[1]] = scavenger.getType();
                     creaturePositionMap.put(positionKey(neighbor[0], neighbor[1]), scavenger);
@@ -503,6 +554,17 @@ public class SimulationEngine {
                 }
             }
         }
+        
+        // Use pathfinding to find corpses within range
+        int searchRange = 12; // Scavengers have good sense of smell
+        int[] nextMove = PathfindingUtils.findNextMove(grid, currentRow, currentCol, 
+                                                       CellType.CORPSE, searchRange, false);
+        
+        if (nextMove != null && grid[nextMove[0]][nextMove[1]] == CellType.EMPTY) {
+            moveCreature(scavenger, nextMove[0], nextMove[1], currentRow, currentCol);
+            return true;
+        }
+        
         return false;
     }
 
@@ -585,10 +647,12 @@ public class SimulationEngine {
      */
     private int getMovementRange(Creature creature) {
         // Base movement range by creature type
+        // Reduced predator range to 1 to reduce per-turn hunting efficiency
+        // This extends overall simulation duration for better educational value
         int baseRange = switch (creature.getType()) {
-            case PREDATOR -> 2;  // Predators can move 2 cells
-            case PREY -> 2;      // Prey can move 2 cells
-            case THIRD_SPECIES -> 3;  // Scavengers can move 3 cells (faster)
+            case PREDATOR -> 1;  // Predators move 1 cell per turn (reduced hunting efficiency)
+            case PREY -> 2;      // Prey can move 2 cells (better escape capability)
+            case THIRD_SPECIES -> 2;  // Scavengers can move 2 cells
             default -> 1;
         };
         
