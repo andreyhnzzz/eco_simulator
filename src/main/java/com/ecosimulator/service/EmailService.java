@@ -37,8 +37,8 @@ import java.util.logging.Logger;
 public class EmailService {
     private static final Logger LOGGER = Logger.getLogger(EmailService.class.getName());
     private static final String OUTGOING_REPORTS_DIR = "outgoing_reports";
-    private static final String FAILED_EMAILS_DIR = "reports/failed_emails";
-    private static final String CONFIG_FILE = "config/smtp.properties";
+    private static final String FAILED_EMAILS_DIR = Paths.get("reports", "failed_emails").toString();
+    private static final String CONFIG_FILE = Paths.get("config", "smtp.properties").toString();
     private static final int CONNECTION_TIMEOUT = 10000;
     private static final int IO_TIMEOUT = 10000;
     private static final int RETRY_DELAY_MS = 2000;

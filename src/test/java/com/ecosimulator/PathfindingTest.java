@@ -141,4 +141,57 @@ public class PathfindingTest {
         
         assertNotNull(nextMove, "Should find path when target is within range");
     }
+    
+    @Test
+    public void testFleeFromPredatorAtBorder() {
+        // Test that prey at borders can still flee from predators
+        // This addresses the issue where prey get stuck at corners/edges
+        CellType[][] grid = new CellType[5][5];
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 5; j++) {
+                grid[i][j] = CellType.EMPTY;
+            }
+        }
+        
+        // Place prey at corner (0, 0)
+        grid[0][0] = CellType.PREY;
+        
+        // Place predator nearby at (1, 1)
+        grid[1][1] = CellType.PREDATOR;
+        
+        // Prey should be able to find a move even from corner
+        int[] nextMove = PathfindingUtils.findNextMove(grid, 0, 0, CellType.PREDATOR, 5, true);
+        
+        assertNotNull(nextMove, "Prey at corner should still be able to move when fleeing");
+        
+        // Verify the move is valid (within bounds)
+        assertTrue(nextMove[0] >= 0 && nextMove[0] < 5, "Move row should be within grid");
+        assertTrue(nextMove[1] >= 0 && nextMove[1] < 5, "Move col should be within grid");
+    }
+    
+    @Test
+    public void testFleeFromPredatorAtEdge() {
+        // Test that prey at edges can still flee from predators
+        CellType[][] grid = new CellType[5][5];
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 5; j++) {
+                grid[i][j] = CellType.EMPTY;
+            }
+        }
+        
+        // Place prey at edge (0, 2)
+        grid[0][2] = CellType.PREY;
+        
+        // Place predator below at (1, 2)
+        grid[1][2] = CellType.PREDATOR;
+        
+        // Prey should be able to find a move even from edge
+        int[] nextMove = PathfindingUtils.findNextMove(grid, 0, 2, CellType.PREDATOR, 5, true);
+        
+        assertNotNull(nextMove, "Prey at edge should still be able to move when fleeing");
+        
+        // Verify the move is valid (within bounds)
+        assertTrue(nextMove[0] >= 0 && nextMove[0] < 5, "Move row should be within grid");
+        assertTrue(nextMove[1] >= 0 && nextMove[1] < 5, "Move col should be within grid");
+    }
 }
