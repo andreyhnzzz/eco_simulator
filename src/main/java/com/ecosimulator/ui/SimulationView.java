@@ -119,18 +119,21 @@ public class SimulationView extends BorderPane {
     }
 
     private void initializeUI() {
-        setPadding(new Insets(20));
+        setPadding(new Insets(10, 10, 10, 10));
         
         // Top - Controls with glassmorphism panel
         controlPanel = createControlPanel();
         setTop(controlPanel);
+        BorderPane.setMargin(controlPanel, new Insets(0, 0, 10, 0));
         
         // Center - Simulation Grid
         setCenter(createGridPanel());
+        BorderPane.setMargin(getCenter(), new Insets(0, 10, 0, 0));
         
         // Right - Statistics with glassmorphism
         statsPanel = createStatsPanel();
         setRight(statsPanel);
+        BorderPane.setMargin(statsPanel, new Insets(0, 0, 10, 0));
         
         // Bottom - Status
         statusPanel = createStatusPanel();
@@ -138,8 +141,8 @@ public class SimulationView extends BorderPane {
     }
 
     private VBox createControlPanel() {
-        VBox panel = new VBox(18);
-        panel.setPadding(new Insets(20, 20, 25, 20));
+        VBox panel = new VBox(10);
+        panel.setPadding(new Insets(12, 15, 12, 15));
         panel.setAlignment(Pos.CENTER);
         panel.getStyleClass().addAll("glass-panel", "control-panel");
 
@@ -444,74 +447,81 @@ public class SimulationView extends BorderPane {
     }
 
     private VBox createStatsPanel() {
-        VBox panel = new VBox(14);
-        panel.setPadding(new Insets(20));
+        VBox panel = new VBox(10);
+        panel.setPadding(new Insets(15, 15, 15, 15));
         panel.setAlignment(Pos.TOP_CENTER);
-        panel.setPrefWidth(280);
-        panel.setMinWidth(260);
+        panel.setPrefWidth(350);
+        panel.setMinWidth(320);
+        panel.setMaxWidth(380);
         panel.getStyleClass().addAll("stats-panel", "glass-panel");
 
-        Label statsTitle = new Label("📊 Estadísticas");
+        Label statsTitle = new Label("📊 Estadísticas & Eventos");
         statsTitle.getStyleClass().add("stats-title");
+        statsTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
         turnLabel = new Label("Turno: 0");
         turnLabel.getStyleClass().add("stat-label");
-        turnLabel.setStyle("-fx-font-size: 16px;");
+        turnLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
 
         Separator sep1 = new Separator();
 
         predatorLabel = new Label("🐺 Depredadores: 0 (♂0/♀0)");
         predatorLabel.getStyleClass().addAll("stat-label", "stat-predator");
+        predatorLabel.setStyle("-fx-font-size: 11px;");
         
         preyLabel = new Label("🐰 Presas: 0 (♂0/♀0)");
         preyLabel.getStyleClass().addAll("stat-label", "stat-prey");
+        preyLabel.setStyle("-fx-font-size: 11px;");
 
         thirdSpeciesLabel = new Label("🦎 Carroñeros: 0 (♂0/♀0)");
         thirdSpeciesLabel.getStyleClass().addAll("stat-label", "stat-third-species");
+        thirdSpeciesLabel.setStyle("-fx-font-size: 11px;");
 
         mutatedLabel = new Label("🧬 Mutados: 0");
         mutatedLabel.getStyleClass().addAll("stat-label", "stat-mutated");
+        mutatedLabel.setStyle("-fx-font-size: 11px;");
 
         corpseLabel = new Label("💀 Cadáveres: 0");
         corpseLabel.getStyleClass().addAll("stat-label", "stat-corpse");
+        corpseLabel.setStyle("-fx-font-size: 11px;");
 
         waterLabel = new Label("💧 Agua: 0");
         waterLabel.getStyleClass().addAll("stat-label", "stat-water");
+        waterLabel.setStyle("-fx-font-size: 11px;");
         
         foodLabel = new Label("🍃 Comida: 0");
         foodLabel.getStyleClass().addAll("stat-label", "stat-food");
+        foodLabel.setStyle("-fx-font-size: 11px;");
 
         Separator sep2 = new Separator();
 
-        Label legendTitle = new Label("📍 Leyenda");
+        // Compact legend with only essential items
+        Label legendTitle = new Label("📍 Leyenda Rápida");
         legendTitle.getStyleClass().add("legend-title");
+        legendTitle.setStyle("-fx-font-size: 12px; -fx-font-weight: bold;");
 
-        VBox legendBox = new VBox(8);
+        VBox legendBox = new VBox(4);
         legendBox.getChildren().addAll(
-            createLegendItemWithIcon(IconManager.PREDATOR, "Depredador ♂", "#D32F2F"),
-            createLegendItemWithIcon(IconManager.FEMALE_PREDATOR, "Depredador ♀", "#D32F2F"),
-            createLegendItemWithIcon(IconManager.PREY, "Presa ♂", "#1976D2"),
-            createLegendItemWithIcon(IconManager.FEMALE_PREY, "Presa ♀", "#1976D2"),
-            createLegendItemWithIcon(IconManager.SCAVENGER, "Carroñero", "#FF9800"),
-            createLegendItemWithIcon(IconManager.CORPSE, "Cadáver", "#4A148C"),
-            createLegendItemWithIcon(IconManager.WATER, "Agua", "#2196F3"),
-            createLegendItemWithIcon(IconManager.FOOD, "Comida", "#8BC34A"),
-            createLegendItemWithIcon(IconManager.MUTATION, "Mutación", "#9C27B0")
+            createCompactLegendItem("🐺 Depredador", "🐰 Presa", "🦎 Carroñero"),
+            createCompactLegendItem("💀 Cadáver", "💧 Agua", "🍃 Comida"),
+            createCompactLegendItem("🧬 Mutación", "♂ Macho", "♀ Hembra")
         );
 
-        // Event log section
+        // Event log section - make it more prominent
         Separator sep3 = new Separator();
-        Label logTitle = new Label("📝 Eventos Recientes");
+        Label logTitle = new Label("📝 Registro de Eventos (Movimientos, Consumo, Mutaciones)");
         logTitle.getStyleClass().add("legend-title");
+        logTitle.setStyle("-fx-font-size: 12px; -fx-font-weight: bold;");
+        logTitle.setWrapText(true);
         
         eventLogArea = new TextArea();
         eventLogArea.setEditable(false);
         eventLogArea.setWrapText(true);
-        eventLogArea.setPrefRowCount(8);
-        eventLogArea.setMinHeight(150);
-        eventLogArea.setPrefHeight(200);
+        eventLogArea.setPrefRowCount(12);
+        eventLogArea.setMinHeight(200);
+        eventLogArea.setPrefHeight(350);
         eventLogArea.getStyleClass().add("event-log");
-        eventLogArea.setStyle("-fx-font-size: 10px; -fx-font-family: monospace;");
+        eventLogArea.setStyle("-fx-font-size: 9px; -fx-font-family: 'Courier New', monospace;");
 
         panel.getChildren().addAll(
             statsTitle, turnLabel, sep1,
@@ -525,6 +535,20 @@ public class SimulationView extends BorderPane {
         VBox.setVgrow(eventLogArea, Priority.ALWAYS);
 
         return panel;
+    }
+    
+    /**
+     * Create a compact legend item with multiple entries in one line
+     */
+    private HBox createCompactLegendItem(String... items) {
+        HBox hbox = new HBox(10);
+        hbox.setAlignment(Pos.CENTER_LEFT);
+        for (String item : items) {
+            Label label = new Label(item);
+            label.setStyle("-fx-font-size: 10px;");
+            hbox.getChildren().add(label);
+        }
+        return hbox;
     }
 
     private HBox createLegendItemWithIcon(String iconName, String text, String color) {
@@ -986,7 +1010,8 @@ public class SimulationView extends BorderPane {
         var eventLogger = engine.getEventLogger();
         if (eventLogger == null) return;
         
-        var recentEntries = eventLogger.getRecentEntries(10);
+        // Show last 30 events for better tracking
+        var recentEntries = eventLogger.getRecentEntries(30);
         StringBuilder sb = new StringBuilder();
         for (int i = recentEntries.size() - 1; i >= 0; i--) {
             var entry = recentEntries.get(i);

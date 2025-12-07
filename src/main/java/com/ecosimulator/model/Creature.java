@@ -23,6 +23,7 @@ public class Creature {
     private CellType type;
     private int energy;
     private boolean mutated;
+    private MutationType mutationType; // Type of mutation
     private int age;
     private double mutationBonus; // Speed/strength bonus from mutation
     private final Sex sex; // Immutable sex attribute
@@ -47,6 +48,7 @@ public class Creature {
         this.col = col;
         this.energy = getInitialEnergy(type);
         this.mutated = false;
+        this.mutationType = MutationType.NONE;
         this.age = 0;
         this.mutationBonus = 1.0;
         this.sex = sex;
@@ -91,22 +93,32 @@ public class Creature {
 
     private int getHungerRate() {
         // Predators get hungrier faster
-        return switch (type) {
+        int baseRate = switch (type) {
             case PREDATOR -> 15;
             case PREY -> 10;
             case THIRD_SPECIES -> 12;
             default -> 10;
         };
+        // Efficient metabolism mutation reduces hunger rate
+        if (mutationType == MutationType.EFFICIENT_METABOLISM) {
+            return (int) (baseRate * 0.7); // 30% reduction
+        }
+        return baseRate;
     }
 
     private int getThirstRate() {
         // All creatures get thirsty at similar rates
-        return switch (type) {
+        int baseRate = switch (type) {
             case PREDATOR -> 12;
             case PREY -> 10;
             case THIRD_SPECIES -> 10;
             default -> 10;
         };
+        // Efficient metabolism mutation reduces thirst rate
+        if (mutationType == MutationType.EFFICIENT_METABOLISM) {
+            return (int) (baseRate * 0.7); // 30% reduction
+        }
+        return baseRate;
     }
 
     public boolean isDead() {
@@ -136,9 +148,14 @@ public class Creature {
 
     /**
      * Eat food to reduce hunger (for prey eating vegetation)
+     * Enhanced Strength mutation provides bonus energy
      */
     public void eatFood() {
         this.hunger = Math.max(0, this.hunger - 40);
+        // Enhanced Strength mutation provides extra energy from food
+        if (mutationType == MutationType.ENHANCED_STRENGTH) {
+            this.energy += 2; // Bonus energy from enhanced strength
+        }
     }
 
     /**
@@ -176,9 +193,21 @@ public class Creature {
         this.energy /= 2;
     }
 
-    public void mutate() {
+    /**
+     * Apply a specific mutation type to this creature
+     */
+    public void mutate(MutationType type) {
         this.mutated = true;
-        this.mutationBonus = 1.5; // 50% bonus to efficiency
+        this.mutationType = type;
+        this.mutationBonus = type.getBonus();
+    }
+    
+    /**
+     * Apply a random mutation to this creature
+     * Uses a new Random instance - for tests, use mutate(MutationType) directly
+     */
+    public void mutate() {
+        mutate(MutationType.getRandomMutation(new java.util.Random()));
     }
 
     // Getters and setters
@@ -198,6 +227,12 @@ public class Creature {
 
     public boolean isMutated() { return mutated; }
     public void setMutated(boolean mutated) { this.mutated = mutated; }
+    
+    public MutationType getMutationType() { return mutationType; }
+    public void setMutationType(MutationType mutationType) { 
+        this.mutationType = mutationType;
+        this.mutationBonus = mutationType.getBonus();
+    }
 
     public int getAge() { return age; }
 
@@ -222,7 +257,8 @@ public class Creature {
 
     @Override
     public String toString() {
-        return String.format("%s %s-%d at (%d,%d) E:%d %s", 
-            type.getDisplayName(), sex.getSymbol(), id, row, col, energy, mutated ? "[M]" : "");
+        String mutationStr = mutated ? " [" + mutationType.getDisplayName() + "]" : "";
+        return String.format("%s %s-%d at (%d,%d) E:%d%s", 
+            type.getDisplayName(), sex.getSymbol(), id, row, col, energy, mutationStr);
     }
 }
