@@ -115,13 +115,15 @@ public class MainFrame extends JFrame {
                 int windowHeight = getHeight();
                 
                 // Update ecosystem panel size (subtract space for borders and report panel)
-                int availableWidth = windowWidth - REPORT_PANEL_WIDTH - UI_MARGIN;
-                int availableHeight = (int) (windowHeight * ECOSYSTEM_HEIGHT_RATIO) - TOP_BOTTOM_MARGIN;
+                // Ensure positive dimensions by taking max with minimum values
+                int availableWidth = Math.max(300, windowWidth - REPORT_PANEL_WIDTH - UI_MARGIN);
+                int availableHeight = Math.max(200, (int) (windowHeight * ECOSYSTEM_HEIGHT_RATIO) - TOP_BOTTOM_MARGIN);
                 
                 ecosystemScrollPane.setPreferredSize(new Dimension(availableWidth, availableHeight));
                 
-                // Update report panel height
-                reportScrollPane.setPreferredSize(new Dimension(REPORT_PANEL_WIDTH, windowHeight - TOP_BOTTOM_MARGIN));
+                // Update report panel height with minimum value
+                int reportHeight = Math.max(300, windowHeight - TOP_BOTTOM_MARGIN);
+                reportScrollPane.setPreferredSize(new Dimension(REPORT_PANEL_WIDTH, reportHeight));
                 
                 // Revalidate main panel (propagates to children) and repaint once
                 mainPanel.revalidate();

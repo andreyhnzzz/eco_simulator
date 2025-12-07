@@ -17,7 +17,10 @@ public class EcosystemPanel extends JPanel {
     private Ecosystem ecosystem;
     
     public EcosystemPanel() {
-        setPreferredSize(new Dimension(DEFAULT_CELL_SIZE * 10 + GRID_MARGIN, DEFAULT_CELL_SIZE * 10 + GRID_MARGIN));
+        setPreferredSize(new Dimension(
+            DEFAULT_CELL_SIZE * Ecosystem.GRID_SIZE + GRID_MARGIN,
+            DEFAULT_CELL_SIZE * Ecosystem.GRID_SIZE + GRID_MARGIN
+        ));
         setBackground(Color.WHITE);
     }
     
@@ -44,10 +47,14 @@ public class EcosystemPanel extends JPanel {
         int gridRows = Ecosystem.GRID_SIZE;
         
         // Calculate cell size that fits in the available space
-        int cellSize = Math.max(MIN_CELL_SIZE, Math.min(
-            (width - GRID_MARGIN) / gridCols,
-            (height - GRID_MARGIN) / gridRows
-        ));
+        // Guard against division by zero and ensure positive dimensions
+        int cellSize = MIN_CELL_SIZE;
+        if (gridCols > 0 && gridRows > 0 && width > GRID_MARGIN && height > GRID_MARGIN) {
+            cellSize = Math.max(MIN_CELL_SIZE, Math.min(
+                (width - GRID_MARGIN) / gridCols,
+                (height - GRID_MARGIN) / gridRows
+            ));
+        }
         
         // Calculate starting position to center the grid
         int gridWidth = cellSize * gridCols;
