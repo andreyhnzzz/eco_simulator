@@ -18,6 +18,12 @@ import java.util.Map;
  */
 public class MainFrame extends JFrame {
     
+    // UI dimension constants for responsive layout
+    private static final int REPORT_PANEL_WIDTH = 300;
+    private static final int UI_MARGIN = 40;
+    private static final double ECOSYSTEM_HEIGHT_RATIO = 0.7;
+    private static final int TOP_BOTTOM_MARGIN = 80;
+    
     private User currentUser;
     private Simulator simulator;
     private Scheduler scheduler;
@@ -95,7 +101,7 @@ public class MainFrame extends JFrame {
         // Right panel: Report/stats with fixed width
         reportPanel = new ReportPanel();
         JScrollPane reportScrollPane = new JScrollPane(reportPanel);
-        reportScrollPane.setPreferredSize(new Dimension(300, 600));
+        reportScrollPane.setPreferredSize(new Dimension(REPORT_PANEL_WIDTH, 600));
         mainPanel.add(reportScrollPane, BorderLayout.EAST);
         
         add(mainPanel);
@@ -109,20 +115,17 @@ public class MainFrame extends JFrame {
                 int windowHeight = getHeight();
                 
                 // Update ecosystem panel size (subtract space for borders and report panel)
-                int availableWidth = windowWidth - 300 - 40; // 300 for report, 40 for margins
-                int availableHeight = (int) (windowHeight * 0.7) - 80; // 70% for ecosystem, 80 for margins
+                int availableWidth = windowWidth - REPORT_PANEL_WIDTH - UI_MARGIN;
+                int availableHeight = (int) (windowHeight * ECOSYSTEM_HEIGHT_RATIO) - TOP_BOTTOM_MARGIN;
                 
                 ecosystemScrollPane.setPreferredSize(new Dimension(availableWidth, availableHeight));
                 
                 // Update report panel height
-                reportScrollPane.setPreferredSize(new Dimension(300, windowHeight - 80));
+                reportScrollPane.setPreferredSize(new Dimension(REPORT_PANEL_WIDTH, windowHeight - TOP_BOTTOM_MARGIN));
                 
-                // Revalidate and repaint to apply changes
+                // Revalidate main panel (propagates to children) and repaint once
                 mainPanel.revalidate();
-                ecosystemPanel.revalidate();
-                ecosystemPanel.repaint();
-                reportPanel.revalidate();
-                reportPanel.repaint();
+                mainPanel.repaint();
             }
         });
     }
