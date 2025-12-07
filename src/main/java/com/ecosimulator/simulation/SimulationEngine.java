@@ -396,15 +396,17 @@ public class SimulationEngine {
                 if (resourceType == CellType.WATER) {
                     creature.drink();
                     stats.incrementWaterConsumed();
-                    eventLogger.logWaterConsumed(stats.getTurn(), creature);
-                    turnEvents.append(creature.getIdString()).append(" drank water. ");
+                    eventLogger.logWaterConsumed(stats.getTurn(), creature, neighbor[0], neighbor[1]);
+                    turnEvents.append(creature.getIdString()).append(" drank water at (")
+                             .append(neighbor[0]).append(",").append(neighbor[1]).append("). ");
                     // Respawn water after consumption
                     grid[neighbor[0]][neighbor[1]] = CellType.WATER;
                 } else if (resourceType == CellType.FOOD) {
                     creature.eatFood();
                     stats.incrementFoodConsumed();
-                    eventLogger.logFoodConsumed(stats.getTurn(), creature);
-                    turnEvents.append(creature.getIdString()).append(" ate food. ");
+                    eventLogger.logFoodConsumed(stats.getTurn(), creature, neighbor[0], neighbor[1]);
+                    turnEvents.append(creature.getIdString()).append(" ate food at (")
+                             .append(neighbor[0]).append(",").append(neighbor[1]).append("). ");
                     // Respawn food after consumption
                     grid[neighbor[0]][neighbor[1]] = CellType.FOOD;
                 }
@@ -460,6 +462,9 @@ public class SimulationEngine {
         creature.move(newRow, newCol);
         grid[newRow][newCol] = creature.getType();
         creaturePositionMap.put(positionKey(newRow, newCol), creature);
+        
+        // Log movement with hunger/thirst status
+        eventLogger.logMovement(stats.getTurn(), creature, oldRow, oldCol, newRow, newCol);
     }
 
     /**

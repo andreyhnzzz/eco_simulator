@@ -31,7 +31,8 @@ public class EventLogger {
         MUTATION_ACTIVATED("🧬 Mutation"),
         CORPSE_DECAY("💨 Decay"),
         WATER_CONSUMED("💧 Drink"),
-        FOOD_CONSUMED("🍃 Eat");
+        FOOD_CONSUMED("🍃 Eat"),
+        MOVEMENT("🚶 Move");
 
         private final String displayName;
 
@@ -224,12 +225,14 @@ public class EventLogger {
      * Log a mutation activation
      */
     public void logMutationActivated(int turn, Creature creature) {
-        String message = String.format("🧬 %s %s mutated",
+        String message = String.format("🧬 %s %s mutated: %s",
             creature.getType().getDisplayName(),
-            creature.getIdString());
-        String details = String.format("Species: %s, Sex: %s",
+            creature.getIdString(),
+            creature.getMutationType().getDisplayName());
+        String details = String.format("Species: %s, Sex: %s, Mutation: %s",
             creature.getType().getDisplayName(),
-            creature.getSex().getDisplayName());
+            creature.getSex().getDisplayName(),
+            creature.getMutationType().toString());
         addEntry(new LogEntry(turn, EventType.MUTATION_ACTIVATED, message, details));
     }
 
@@ -275,10 +278,13 @@ public class EventLogger {
     /**
      * Log water consumption
      */
-    public void logWaterConsumed(int turn, Creature creature) {
-        String message = String.format("💧 %s %s drank water",
+    public void logWaterConsumed(int turn, Creature creature, int row, int col) {
+        String message = String.format("💧 %s %s drank water at (%d,%d) - Thirst: %d → %d",
             creature.getType().getDisplayName(),
-            creature.getIdString());
+            creature.getIdString(),
+            row, col,
+            Math.min(100, creature.getThirst() + 50), // Before drinking
+            creature.getThirst()); // After drinking
         String details = String.format("Thirst reduced, Species: %s",
             creature.getType().getDisplayName());
         addEntry(new LogEntry(turn, EventType.WATER_CONSUMED, message, details));
@@ -287,13 +293,32 @@ public class EventLogger {
     /**
      * Log food consumption
      */
-    public void logFoodConsumed(int turn, Creature creature) {
-        String message = String.format("🍃 %s %s ate food",
+    public void logFoodConsumed(int turn, Creature creature, int row, int col) {
+        String message = String.format("🍃 %s %s ate food at (%d,%d) - Hunger: %d → %d",
             creature.getType().getDisplayName(),
-            creature.getIdString());
+            creature.getIdString(),
+            row, col,
+            Math.min(100, creature.getHunger() + 40), // Before eating
+            creature.getHunger()); // After eating
         String details = String.format("Hunger reduced, Species: %s",
             creature.getType().getDisplayName());
         addEntry(new LogEntry(turn, EventType.FOOD_CONSUMED, message, details));
+    }
+    
+    /**
+     * Log creature movement with hunger and thirst status
+     */
+    public void logMovement(int turn, Creature creature, int fromRow, int fromCol, int toRow, int toCol) {
+        String message = String.format("🚶 %s %s moved (%d,%d) → (%d,%d) | H:%d T:%d E:%d",
+            creature.getType().getDisplayName(),
+            creature.getIdString(),
+            fromRow, fromCol, toRow, toCol,
+            creature.getHunger(),
+            creature.getThirst(),
+            creature.getEnergy());
+        String details = String.format("Hunger: %d, Thirst: %d, Energy: %d",
+            creature.getHunger(), creature.getThirst(), creature.getEnergy());
+        addEntry(new LogEntry(turn, EventType.MOVEMENT, message, details));
     }
 
     /**
