@@ -447,8 +447,8 @@ public class SimulationView extends BorderPane {
         VBox panel = new VBox(14);
         panel.setPadding(new Insets(20));
         panel.setAlignment(Pos.TOP_CENTER);
-        panel.setPrefWidth(240);
-        panel.setMinWidth(220);
+        panel.setPrefWidth(280);
+        panel.setMinWidth(260);
         panel.getStyleClass().addAll("stats-panel", "glass-panel");
 
         Label statsTitle = new Label("📊 Estadísticas");
@@ -507,8 +507,9 @@ public class SimulationView extends BorderPane {
         eventLogArea = new TextArea();
         eventLogArea.setEditable(false);
         eventLogArea.setWrapText(true);
-        eventLogArea.setPrefRowCount(6);
-        eventLogArea.setMaxHeight(120);
+        eventLogArea.setPrefRowCount(8);
+        eventLogArea.setMinHeight(150);
+        eventLogArea.setPrefHeight(200);
         eventLogArea.getStyleClass().add("event-log");
         eventLogArea.setStyle("-fx-font-size: 10px; -fx-font-family: monospace;");
 
@@ -519,6 +520,9 @@ public class SimulationView extends BorderPane {
             sep2, legendTitle, legendBox,
             sep3, logTitle, eventLogArea
         );
+        
+        // Allow event log to grow with available space
+        VBox.setVgrow(eventLogArea, Priority.ALWAYS);
 
         return panel;
     }

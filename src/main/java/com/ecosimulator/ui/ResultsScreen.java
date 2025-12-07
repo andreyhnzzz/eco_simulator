@@ -54,6 +54,10 @@ public class ResultsScreen extends StackPane {
     private VBox insightsContainer;
     private HBox actionButtonsContainer;
     
+    // Report state tracking
+    private String lastGeneratedReportPath = null;
+    private Button sendReportButton;
+    
     // Particle effect container
     private Pane particleContainer;
     private List<Circle> particles = new ArrayList<>();
@@ -107,7 +111,7 @@ public class ResultsScreen extends StackPane {
         mainContainer = new VBox(30);
         mainContainer.setPadding(new Insets(40, 50, 40, 50));
         mainContainer.setAlignment(Pos.TOP_CENTER);
-        mainContainer.setMaxWidth(900);
+        mainContainer.setMaxWidth(1200);
         mainContainer.getStyleClass().add("results-container");
         
         // Title section
@@ -248,6 +252,7 @@ public class ResultsScreen extends StackPane {
         section.setAlignment(Pos.CENTER);
         section.getStyleClass().add("results-card");
         section.setPadding(new Insets(25));
+        VBox.setVgrow(section, Priority.ALWAYS);
         
         Label chartTitle = new Label("📊 Population Distribution");
         chartTitle.setStyle("-fx-font-size: 20px; -fx-font-weight: 700;");
@@ -255,7 +260,9 @@ public class ResultsScreen extends StackPane {
         populationChart = new PieChart();
         populationChart.setTitle("");
         populationChart.setLegendVisible(true);
-        populationChart.setPrefSize(400, 300);
+        populationChart.setMinSize(400, 300);
+        populationChart.setPrefSize(600, 400);
+        populationChart.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         populationChart.setLabelsVisible(true);
         
         // Add data with proper names
@@ -365,23 +372,24 @@ public class ResultsScreen extends StackPane {
         container.setAlignment(Pos.CENTER);
         container.setPadding(new Insets(20, 0, 0, 0));
         
-        // Share Results button
-        Button shareButton = new Button("📤 Share Results");
-        shareButton.getStyleClass().addAll("action-button", "share-button");
-        shareButton.setOnAction(e -> {
-            AnimationUtils.playButtonClickAnimation(shareButton);
-            shareResults();
-        });
-        AnimationUtils.applyButtonHoverAnimation(shareButton);
-        
-        // Export PDF button
-        Button exportButton = new Button("📄 Export PDF");
+        // Export PDF button (renamed from "Export PDF" to "Finish Simulation and Make Report")
+        Button exportButton = new Button("📄 Finish Simulation and Make Report");
         exportButton.getStyleClass().addAll("action-button", "reset-button");
         exportButton.setOnAction(e -> {
             AnimationUtils.playButtonClickAnimation(exportButton);
             exportToPDF();
         });
         AnimationUtils.applyButtonHoverAnimation(exportButton);
+        
+        // Send Report button (NEW - only enabled after report is generated)
+        sendReportButton = new Button("📧 Send Report");
+        sendReportButton.getStyleClass().addAll("action-button", "start-button");
+        sendReportButton.setDisable(true); // Disabled until report is generated
+        sendReportButton.setOnAction(e -> {
+            AnimationUtils.playButtonClickAnimation(sendReportButton);
+            sendExistingReport();
+        });
+        AnimationUtils.applyButtonHoverAnimation(sendReportButton);
         
         // Close button
         Button closeButton = new Button("✖ Close");
@@ -392,7 +400,7 @@ public class ResultsScreen extends StackPane {
         });
         AnimationUtils.applyButtonHoverAnimation(closeButton);
         
-        container.getChildren().addAll(shareButton, exportButton, closeButton);
+        container.getChildren().addAll(exportButton, sendReportButton, closeButton);
         return container;
     }
     
@@ -645,10 +653,58 @@ public class ResultsScreen extends StackPane {
             String reportPath = reportsDir.resolve(reportFilename).toString();
             PDFReportGenerator.generateSimpleReport(reportPath, stats.getTurn(), stats, gridSize, extinctionTurn);
             
+            // Store the report path and enable the send button
+            lastGeneratedReportPath = reportPath;
+            if (sendReportButton != null) {
+                sendReportButton.setDisable(false);
+            }
+            
             showNotification("PDF Exported! 📄", "Report saved to: " + reportPath, Alert.AlertType.INFORMATION);
         } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Failed to export PDF", e);
             showNotification("Export Failed", "Could not generate PDF: " + e.getMessage(), Alert.AlertType.ERROR);
+        }
+    }
+    
+    private void sendExistingReport() {
+        if (lastGeneratedReportPath == null) {
+            showNotification("No Report Available", "Please generate a report first using 'Finish Simulation and Make Report'.", Alert.AlertType.WARNING);
+            return;
+        }
+        
+        if (emailService == null || !Session.isLoggedIn()) {
+            showNotification("Cannot Send Report", "Please log in and configure email settings to send reports.", Alert.AlertType.WARNING);
+            return;
+        }
+        
+        try {
+            File reportFile = new File(lastGeneratedReportPath);
+            if (!reportFile.exists()) {
+                showNotification("Report Not Found", "The generated report file no longer exists: " + lastGeneratedReportPath, Alert.AlertType.ERROR);
+                lastGeneratedReportPath = null;
+                sendReportButton.setDisable(true);
+                return;
+            }
+            
+            // Send email
+            var currentUser = Session.getUser();
+            if (currentUser != null && currentUser.getEmail() != null && !currentUser.getEmail().isEmpty()) {
+                String subject = "Eco Simulator - Simulation Report";
+                String body = buildEmailBody();
+                
+                boolean success = emailService.sendReport(currentUser.getEmail(), reportFile, subject, body);
+                
+                if (success) {
+                    showNotification("Report Sent! 📧", "Report sent to " + currentUser.getEmail(), Alert.AlertType.INFORMATION);
+                } else {
+                    showNotification("Email Failed", "Could not send email. Check SMTP settings.", Alert.AlertType.ERROR);
+                }
+            } else {
+                showNotification("No Email", "Please configure your email in user settings.", Alert.AlertType.WARNING);
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Failed to send report", e);
+            showNotification("Error", "Could not send report: " + e.getMessage(), Alert.AlertType.ERROR);
         }
     }
     
@@ -706,12 +762,12 @@ public class ResultsScreen extends StackPane {
         
         ResultsScreen resultsScreen = new ResultsScreen(stats, gridSize, extinctionTurn, emailService);
         
-        Scene scene = new Scene(resultsScreen, 950, 750);
+        Scene scene = new Scene(resultsScreen, 1100, 850);
         ThemeManager.applyCurrentTheme(scene);
         
         dialog.setScene(scene);
-        dialog.setMinWidth(700);
-        dialog.setMinHeight(600);
+        dialog.setMinWidth(900);
+        dialog.setMinHeight(700);
         dialog.centerOnScreen();
         
         // Play entrance animations after showing
