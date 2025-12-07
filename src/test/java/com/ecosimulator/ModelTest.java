@@ -115,13 +115,13 @@ class ModelTest {
         assertEquals(0.10, balanced.getPredatorPercentage());
         assertEquals(0.20, balanced.getPreyPercentage());
         
-        // Predator Dominant
-        assertEquals(0.20, predatorDom.getPredatorPercentage());
+        // Predator Dominant (reduced from 0.20 to 0.15 to lower dominance)
+        assertEquals(0.15, predatorDom.getPredatorPercentage());
         assertEquals(0.10, predatorDom.getPreyPercentage());
         
-        // Prey Dominant
+        // Prey Dominant (reduced from 0.30 to 0.25 to lower dominance)
         assertEquals(0.05, preyDom.getPredatorPercentage());
-        assertEquals(0.30, preyDom.getPreyPercentage());
+        assertEquals(0.25, preyDom.getPreyPercentage());
     }
 
     @Test

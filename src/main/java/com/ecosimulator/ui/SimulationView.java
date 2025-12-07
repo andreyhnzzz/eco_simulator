@@ -1059,10 +1059,11 @@ public class SimulationView extends BorderPane {
                 stopAndReportButton.setDisable(false);
                 pauseButton.setDisable(true);
                 
-                // Show premium results screen for consecutive simulation
+                // Show premium results screen for consecutive simulation with callback
                 if (getScene() != null && getScene().getWindow() instanceof Stage) {
                     Stage owner = (Stage) getScene().getWindow();
-                    ResultsScreen.showResultsDialog(owner, stats, DEFAULT_GRID_SIZE, extinctionTurn, emailService);
+                    ResultsScreen.showResultsDialog(owner, stats, DEFAULT_GRID_SIZE, extinctionTurn, emailService, 
+                        () -> startNextSimulation());
                 }
             } else {
                 // Single simulation mode (original behavior)
@@ -1073,7 +1074,7 @@ public class SimulationView extends BorderPane {
                 thirdSpeciesCheckBox.setDisable(false);
                 mutationsCheckBox.setDisable(false);
                 
-                // Show premium results screen
+                // Show premium results screen (no callback in single simulation mode)
                 if (getScene() != null && getScene().getWindow() instanceof Stage) {
                     Stage owner = (Stage) getScene().getWindow();
                     ResultsScreen.showResultsDialog(owner, stats, DEFAULT_GRID_SIZE, extinctionTurn, emailService);

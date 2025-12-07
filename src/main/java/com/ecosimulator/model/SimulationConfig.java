@@ -84,7 +84,7 @@ public class SimulationConfig {
     public double getPredatorPercentage() {
         return switch (scenario) {
             case BALANCED -> 0.10;           // 10% predators
-            case PREDATOR_DOMINANT -> 0.20;  // 20% predators
+            case PREDATOR_DOMINANT -> 0.15;  // 15% predators (reduced from 20%)
             case PREY_DOMINANT -> 0.05;      // 5% predators
         };
     }
@@ -96,7 +96,7 @@ public class SimulationConfig {
         return switch (scenario) {
             case BALANCED -> 0.20;           // 20% prey
             case PREDATOR_DOMINANT -> 0.10;  // 10% prey
-            case PREY_DOMINANT -> 0.30;      // 30% prey
+            case PREY_DOMINANT -> 0.25;      // 25% prey (reduced from 30%)
         };
     }
 
