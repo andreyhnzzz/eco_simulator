@@ -1034,11 +1034,11 @@ public class SimulationView extends BorderPane {
                 stopAndReportButton.setDisable(false);
                 pauseButton.setDisable(true);
                 
-                // Show brief notification
-                showNotification("Simulación Completada", 
-                               String.format("Simulación #%d finalizada. Use 'Siguiente' para continuar o 'Finalizar & PDF' para generar reporte.", 
-                                           currentSimulationNumber),
-                               Alert.AlertType.INFORMATION);
+                // Show premium results screen for consecutive simulation
+                if (getScene() != null && getScene().getWindow() instanceof Stage) {
+                    Stage owner = (Stage) getScene().getWindow();
+                    ResultsScreen.showResultsDialog(owner, stats, DEFAULT_GRID_SIZE, extinctionTurn, emailService);
+                }
             } else {
                 // Single simulation mode (original behavior)
                 statusLabel.setText("🏆 Simulación terminada: " + result);
