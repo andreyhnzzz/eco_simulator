@@ -32,8 +32,31 @@ public class MailSender {
      */
     private void loadConfiguration() {
         Properties appProps = new Properties();
-        try (FileInputStream fis = new FileInputStream("config/app.properties")) {
-            appProps.load(fis);
+        
+        // Try loading from classpath first, then from file system
+        try (var is = getClass().getClassLoader().getResourceAsStream("app.properties")) {
+            if (is != null) {
+                appProps.load(is);
+            } else {
+                // Fallback to file system
+                try (FileInputStream fis = new FileInputStream("config/app.properties")) {
+                    appProps.load(fis);
+                } catch (IOException e) {
+                    throw e;
+                }
+            }
+        } catch (IOException e) {
+            try (FileInputStream fis = new FileInputStream("config/app.properties")) {
+                appProps.load(fis);
+            } catch (IOException ex) {
+                System.err.println("Could not load mail configuration: " + ex.getMessage());
+                // Use defaults
+                initializeDefaults();
+                return;
+            }
+        }
+        
+        try {
             
             this.smtpHost = appProps.getProperty("mail.smtp.host", "localhost");
             this.smtpPort = Integer.parseInt(appProps.getProperty("mail.smtp.port", "587"));
@@ -50,17 +73,27 @@ public class MailSender {
             mailProperties.put("mail.smtp.auth", !smtpUsername.isEmpty());
             mailProperties.put("mail.smtp.starttls.enable", useStartTls);
             mailProperties.put("mail.smtp.ssl.enable", useSsl);
-            
-        } catch (IOException e) {
-            System.err.println("Could not load mail configuration: " + e.getMessage());
-            // Use defaults
-            this.smtpHost = "localhost";
-            this.smtpPort = 1025;
-            this.fromAddress = "noreply@ecosimulator.com";
-            this.mailProperties = new Properties();
-            mailProperties.put("mail.smtp.host", smtpHost);
-            mailProperties.put("mail.smtp.port", String.valueOf(smtpPort));
+        } catch (Exception e) {
+            System.err.println("Error processing mail configuration: " + e.getMessage());
+            initializeDefaults();
         }
+    }
+    
+    /**
+     * Initialize default mail configuration
+     */
+    private void initializeDefaults() {
+        this.smtpHost = "localhost";
+        this.smtpPort = 1025;
+        this.fromAddress = "noreply@ecosimulator.com";
+        this.smtpUsername = "";
+        this.smtpPassword = "";
+        this.useStartTls = false;
+        this.useSsl = false;
+        this.mailProperties = new Properties();
+        mailProperties.put("mail.smtp.host", smtpHost);
+        mailProperties.put("mail.smtp.port", String.valueOf(smtpPort));
+        mailProperties.put("mail.smtp.auth", "false");
     }
     
     /**
