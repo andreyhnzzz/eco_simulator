@@ -69,48 +69,42 @@ public class OAuthUtils {
      */
     public static Credential getGmailCredential() throws IOException, GeneralSecurityException {
         GoogleClientSecrets clientSecrets;
-        Reader reader = null;
         
-        try {
-            // Try to load credentials from configured path (external file)
-            if (credentialsFilePath != null && !credentialsFilePath.isEmpty()) {
-                File credentialsFile = new File(credentialsFilePath);
-                if (credentialsFile.exists()) {
-                    LOGGER.info("Loading credentials from external file: " + credentialsFilePath);
-                    reader = new FileReader(credentialsFile);
-                    clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, reader);
-                } else {
-                    LOGGER.warning("Configured credentials file not found at: " + credentialsFilePath);
-                    throw new IOException("Credentials file not found: " + credentialsFilePath + 
-                                        ". Please download it from Google Cloud Console.");
-                }
-            } else {
-                // Try to load from resources/oauth/credentials.json
-                LOGGER.info("Attempting to load credentials from resources: " + DEFAULT_RESOURCE_PATH);
-                InputStream is = OAuthUtils.class.getResourceAsStream(DEFAULT_RESOURCE_PATH);
-                
-                if (is != null) {
-                    LOGGER.info("Loading credentials from resource path: " + DEFAULT_RESOURCE_PATH);
-                    reader = new InputStreamReader(is);
-                    clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, reader);
-                } else {
-                    LOGGER.severe("Credentials not found in resources at: " + DEFAULT_RESOURCE_PATH);
-                    throw new IOException("Credentials file not found. Please place credentials.json in " +
-                                        "src/main/resources/oauth/ or configure an external path. " +
-                                        "Download it from Google Cloud Console.");
-                }
+        // Try to load credentials from configured path (external file)
+        if (credentialsFilePath != null && !credentialsFilePath.isEmpty()) {
+            File credentialsFile = new File(credentialsFilePath);
+            if (!credentialsFile.exists()) {
+                LOGGER.warning("Configured credentials file not found at: " + credentialsFilePath);
+                throw new IOException("Credentials file not found: " + credentialsFilePath + 
+                                    ". Please download it from Google Cloud Console.");
             }
-        } catch (IOException e) {
-            if (reader != null) {
-                try { reader.close(); } catch (IOException ignored) {}
+            
+            LOGGER.info("Loading credentials from external file: " + credentialsFilePath);
+            try (FileReader reader = new FileReader(credentialsFile)) {
+                clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, reader);
+            } catch (IOException e) {
+                LOGGER.log(Level.SEVERE, "Failed to read or parse credentials file: " + credentialsFilePath, e);
+                throw new IOException("Error loading credentials from " + credentialsFilePath + ": " + e.getMessage(), e);
             }
-            LOGGER.log(Level.SEVERE, "Failed to load credentials file", e);
-            throw new IOException("Invalid credentials file format: " + e.getMessage(), e);
-        }
-        
-        // Close the reader after loading
-        if (reader != null) {
-            try { reader.close(); } catch (IOException ignored) {}
+        } else {
+            // Try to load from resources/oauth/credentials.json
+            LOGGER.info("Attempting to load credentials from resources: " + DEFAULT_RESOURCE_PATH);
+            InputStream is = OAuthUtils.class.getResourceAsStream(DEFAULT_RESOURCE_PATH);
+            
+            if (is == null) {
+                LOGGER.severe("Credentials not found in resources at: " + DEFAULT_RESOURCE_PATH);
+                throw new IOException("Credentials file not found. Please place credentials.json in " +
+                                    "src/main/resources/oauth/ or configure an external path. " +
+                                    "Download it from Google Cloud Console.");
+            }
+            
+            LOGGER.info("Loading credentials from resource path: " + DEFAULT_RESOURCE_PATH);
+            try (InputStreamReader reader = new InputStreamReader(is)) {
+                clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, reader);
+            } catch (IOException e) {
+                LOGGER.log(Level.SEVERE, "Failed to read or parse credentials from resources", e);
+                throw new IOException("Error loading credentials from resources: " + e.getMessage(), e);
+            }
         }
         
         // Build flow and trigger user authorization request
@@ -172,13 +166,12 @@ public class OAuthUtils {
         }
         
         // Check resource path
-        InputStream is = OAuthUtils.class.getResourceAsStream(DEFAULT_RESOURCE_PATH);
-        if (is != null) {
-            try { is.close(); } catch (IOException ignored) {}
-            return true;
+        try (InputStream is = OAuthUtils.class.getResourceAsStream(DEFAULT_RESOURCE_PATH)) {
+            return is != null;
+        } catch (IOException e) {
+            LOGGER.log(Level.WARNING, "Error checking for credentials resource", e);
+            return false;
         }
-        
-        return false;
     }
     
     /**
