@@ -2,20 +2,22 @@ package com.ecosimulator.service;
 
 import com.ecosimulator.auth.User;
 import com.ecosimulator.model.SimulationStats;
+import com.ecosimulator.util.OAuthUtils;
+import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.services.gmail.Gmail;
 import jakarta.mail.*;
 import jakarta.mail.internet.*;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.GeneralSecurityException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -23,20 +25,24 @@ import java.util.logging.Logger;
 /**
  * Production-ready email service for sending simulation reports.
  * Supports SMTP configuration with STARTTLS (port 587) and SSL (port 465).
+ * Supports Gmail OAuth2 authentication for enhanced security.
  * Includes single retry on transient failures and graceful fallback to disk.
  * 
  * Configuration options:
- * - For Gmail: Use App Password (not regular password), smtp.gmail.com:587, STARTTLS
+ * - For Gmail OAuth: Use credentials.json from Google Cloud Console
+ * - For Gmail SMTP: Use App Password (not regular password), smtp.gmail.com:587, STARTTLS
  * - For MailHog (local testing): localhost:1025, no auth required
  * - For other providers: Configure host, port, and credentials accordingly
  */
 public class EmailService {
     private static final Logger LOGGER = Logger.getLogger(EmailService.class.getName());
     private static final String OUTGOING_REPORTS_DIR = "outgoing_reports";
+    private static final String FAILED_EMAILS_DIR = "reports/failed_emails";
     private static final String CONFIG_FILE = "config/smtp.properties";
     private static final int CONNECTION_TIMEOUT = 10000;
     private static final int IO_TIMEOUT = 10000;
     private static final int RETRY_DELAY_MS = 2000;
+    private static final String APPLICATION_NAME = "Eco Simulator";
 
     private String smtpHost;
     private int smtpPort;
@@ -46,11 +52,17 @@ public class EmailService {
     private boolean useStartTls;
     private boolean useSsl;
     private boolean configured;
+    
+    // OAuth fields
+    private boolean useOAuth;
+    private String oauthCredentialsPath;
 
     public EmailService() {
         this.configured = false;
         this.useStartTls = true;
         this.useSsl = false;
+        this.useOAuth = false;
+        this.oauthCredentialsPath = "credentials.json";
         loadConfiguration();
     }
 
@@ -88,9 +100,36 @@ public class EmailService {
         this.useStartTls = useStartTls;
         this.useSsl = useSsl;
         this.configured = host != null && !host.isEmpty();
+        this.useOAuth = false; // Disable OAuth when SMTP is configured
         
         LOGGER.info("SMTP configured: " + host + ":" + port + 
                    " (STARTTLS=" + useStartTls + ", SSL=" + useSsl + ")");
+    }
+
+    /**
+     * Configure Gmail OAuth2 authentication.
+     * 
+     * @param credentialsPath Path to credentials.json file from Google Cloud Console
+     * @param fromEmail Email address to send from (must match OAuth account)
+     */
+    public void configureOAuth(String credentialsPath, String fromEmail) {
+        this.oauthCredentialsPath = credentialsPath;
+        this.fromAddress = fromEmail;
+        this.useOAuth = true;
+        this.configured = true;
+        OAuthUtils.setCredentialsFilePath(credentialsPath);
+        
+        LOGGER.info("Gmail OAuth configured with credentials: " + credentialsPath);
+    }
+
+    /**
+     * Enable or disable OAuth authentication.
+     * 
+     * @param enabled true to use OAuth, false to use SMTP
+     */
+    public void setUseOAuth(boolean enabled) {
+        this.useOAuth = enabled;
+        LOGGER.info("OAuth " + (enabled ? "enabled" : "disabled"));
     }
 
     /**
@@ -177,8 +216,12 @@ public class EmailService {
      */
     public boolean testConnection() {
         if (!configured) {
-            LOGGER.warning("Cannot test connection: SMTP not configured");
+            LOGGER.warning("Cannot test connection: Not configured");
             return false;
+        }
+
+        if (useOAuth) {
+            return testGmailOAuth();
         }
 
         Properties props = buildSmtpProperties();
@@ -192,6 +235,26 @@ public class EmailService {
             return true;
         } catch (MessagingException e) {
             LOGGER.log(Level.WARNING, "SMTP connection test failed: " + e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Test Gmail OAuth connection.
+     * 
+     * @return true if OAuth connection successful
+     */
+    public static boolean testGmailOAuth() {
+        try {
+            boolean result = OAuthUtils.testOAuthConnection();
+            if (result) {
+                LOGGER.info("Gmail OAuth connection test successful");
+            } else {
+                LOGGER.warning("Gmail OAuth connection test failed");
+            }
+            return result;
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Gmail OAuth connection test failed: " + e.getMessage(), e);
             return false;
         }
     }
@@ -218,11 +281,16 @@ public class EmailService {
             return false;
         }
 
-        // First attempt
-        boolean success = attemptSend(recipientEmail, pdf, subject, body);
+        // First attempt - use OAuth if enabled, otherwise SMTP
+        boolean success;
+        if (useOAuth) {
+            success = attemptSendWithOAuth(recipientEmail, pdf, subject, body);
+        } else {
+            success = attemptSend(recipientEmail, pdf, subject, body);
+        }
         
-        if (!success) {
-            // Retry once after delay
+        if (!success && !useOAuth) {
+            // Retry once after delay for SMTP (OAuth already has fallback)
             LOGGER.info("First send attempt failed, retrying after " + RETRY_DELAY_MS + "ms...");
             try {
                 Thread.sleep(RETRY_DELAY_MS);
@@ -283,20 +351,167 @@ public class EmailService {
             return false;
         }
 
-        return attemptSend(toEmail, null, subject, body);
+        if (useOAuth) {
+            return attemptSendWithOAuth(toEmail, null, subject, body);
+        } else {
+            return attemptSend(toEmail, null, subject, body);
+        }
     }
 
     /**
-     * Attempt to send an email with optional attachment.
+     * Attempt to send an email via Gmail OAuth with fallback to SMTP.
+     */
+    private boolean attemptSendWithOAuth(String toEmail, File attachment, String subject, String body) {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        LOGGER.info("[" + timestamp + "] Attempting to send email via Gmail OAuth to: " + toEmail);
+        
+        try {
+            // Get OAuth credentials
+            Credential credential = OAuthUtils.getGmailCredential();
+            
+            // Build Gmail service
+            Gmail service = new Gmail.Builder(
+                    GoogleNetHttpTransport.newTrustedTransport(),
+                    GsonFactory.getDefaultInstance(),
+                    credential)
+                    .setApplicationName(APPLICATION_NAME)
+                    .build();
+            
+            // Create MIME message
+            MimeMessage mimeMessage = createMimeMessage(toEmail, subject, body, attachment);
+            
+            // Send via Gmail API
+            sendMessageGmail(service, mimeMessage);
+            
+            LOGGER.info("[" + timestamp + "] Email sent successfully via Gmail OAuth to: " + toEmail);
+            return true;
+            
+        } catch (Exception e) {
+            String errorTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            LOGGER.log(Level.WARNING, "[" + errorTimestamp + "] Failed to send email via Gmail OAuth: " + e.getMessage(), e);
+            LOGGER.info("Falling back to SMTP method...");
+            
+            // Fallback to SMTP if OAuth fails
+            return sendEmailSMTPFallback(toEmail, subject, body, attachment);
+        }
+    }
+
+    /**
+     * Create a MIME message for email.
+     */
+    private MimeMessage createMimeMessage(String toEmail, String subject, String body, File attachment) throws MessagingException, IOException {
+        Properties props = new Properties();
+        Session session = Session.getDefaultInstance(props, null);
+        
+        MimeMessage message = new MimeMessage(session);
+        message.setFrom(new InternetAddress(fromAddress));
+        message.addRecipient(jakarta.mail.Message.RecipientType.TO, new InternetAddress(toEmail));
+        message.setSubject(subject);
+        
+        if (attachment != null && attachment.exists()) {
+            Multipart multipart = new MimeMultipart();
+            
+            // Text part
+            MimeBodyPart textPart = new MimeBodyPart();
+            textPart.setText(body, "UTF-8");
+            multipart.addBodyPart(textPart);
+            
+            // Attachment part
+            MimeBodyPart attachmentPart = new MimeBodyPart();
+            attachmentPart.attachFile(attachment);
+            attachmentPart.setHeader("Content-Type", "application/pdf");
+            multipart.addBodyPart(attachmentPart);
+            
+            message.setContent(multipart);
+        } else {
+            message.setText(body);
+        }
+        
+        return message;
+    }
+
+    /**
+     * Send a MIME message using Gmail API.
+     */
+    private void sendMessageGmail(Gmail service, MimeMessage mimeMessage) throws MessagingException, IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        mimeMessage.writeTo(buffer);
+        byte[] bytes = buffer.toByteArray();
+        String encodedEmail = Base64.getUrlEncoder().encodeToString(bytes);
+        
+        com.google.api.services.gmail.model.Message gmailMessage = new com.google.api.services.gmail.model.Message();
+        gmailMessage.setRaw(encodedEmail);
+        
+        service.users().messages().send("me", gmailMessage).execute();
+    }
+
+    /**
+     * Fallback method to send email via SMTP when OAuth fails.
+     */
+    private boolean sendEmailSMTPFallback(String toEmail, String subject, String body, File attachment) {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        LOGGER.info("[" + timestamp + "] Attempting SMTP fallback for: " + toEmail);
+        
+        // Check if SMTP is configured
+        if (smtpHost == null || smtpHost.isEmpty()) {
+            LOGGER.warning("[" + timestamp + "] SMTP not configured. Cannot send email.");
+            // Save to failed emails directory
+            saveFailedEmail(toEmail, subject, body);
+            return false;
+        }
+        
+        boolean success = attemptSend(toEmail, attachment, subject, body);
+        
+        if (!success) {
+            // Save to failed emails directory as last resort
+            saveFailedEmail(toEmail, subject, body);
+        }
+        
+        return success;
+    }
+
+    /**
+     * Save failed email to local file system.
+     */
+    private void saveFailedEmail(String recipient, String subject, String body) {
+        try {
+            Path failedDir = Paths.get(FAILED_EMAILS_DIR);
+            if (!Files.exists(failedDir)) {
+                Files.createDirectories(failedDir);
+            }
+            
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+            String filename = String.format("failed_email_%s.eml", timestamp);
+            File file = failedDir.resolve(filename).toFile();
+            
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+                writer.write("To: " + recipient + "\n");
+                writer.write("Subject: " + subject + "\n");
+                writer.write("Date: " + LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "\n");
+                writer.write("\n");
+                writer.write(body);
+            }
+            
+            String logTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            LOGGER.info("[" + logTimestamp + "] Failed email saved to: " + file.getAbsolutePath());
+            
+        } catch (IOException e) {
+            String errorTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            LOGGER.log(Level.SEVERE, "[" + errorTimestamp + "] Failed to save email to disk", e);
+        }
+    }
+
+    /**
+     * Attempt to send an email with optional attachment using SMTP.
      */
     private boolean attemptSend(String toEmail, File attachment, String subject, String body) {
         try {
             Properties props = buildSmtpProperties();
             Session session = createSession(props);
 
-            Message message = new MimeMessage(session);
+            jakarta.mail.Message message = new MimeMessage(session);
             message.setFrom(new InternetAddress(fromAddress != null ? fromAddress : username));
-            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
+            message.setRecipients(jakarta.mail.Message.RecipientType.TO, InternetAddress.parse(toEmail));
             message.setSubject(subject);
             message.setSentDate(new java.util.Date());
 
@@ -477,6 +692,9 @@ public class EmailService {
         if (!configured) {
             return "Email service not configured";
         }
+        if (useOAuth) {
+            return "Using Gmail OAuth2 authentication";
+        }
         return "Using SMTP: " + smtpHost + ":" + smtpPort + 
                (useStartTls ? " (STARTTLS)" : "") + 
                (useSsl ? " (SSL)" : "");
@@ -487,5 +705,22 @@ public class EmailService {
      */
     public static String getFallbackDirectory() {
         return OUTGOING_REPORTS_DIR;
+    }
+
+    /**
+     * Get the failed emails directory path.
+     */
+    public static String getFailedEmailsDirectory() {
+        return FAILED_EMAILS_DIR;
+    }
+
+    // OAuth getters
+
+    public boolean isUseOAuth() {
+        return useOAuth;
+    }
+
+    public String getOauthCredentialsPath() {
+        return oauthCredentialsPath;
     }
 }
