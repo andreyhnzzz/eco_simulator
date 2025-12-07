@@ -246,7 +246,8 @@ public class PathfindingUtils {
     }
     
     /**
-     * Find a move in the opposite direction (for fleeing)
+     * Find a move in the opposite direction (for fleeing).
+     * Enhanced to handle border cases - prey at borders should still be able to move.
      */
     private static int[] findFleeingMove(CellType[][] grid, int startRow, int startCol,
                                         int threatRow, int threatCol, int gridSize) {
@@ -277,6 +278,16 @@ public class PathfindingUtils {
         for (int[] alt : alternatives) {
             if (isValidPosition(alt[0], alt[1], gridSize)) {
                 return new int[]{alt[0], alt[1]};
+            }
+        }
+        
+        // If still stuck (corner case), try all 8 directions to find ANY valid move
+        // This ensures prey at borders/corners don't get stuck
+        for (int[] dir : getDirections()) {
+            int newR = startRow + dir[0];
+            int newC = startCol + dir[1];
+            if (isValidPosition(newR, newC, gridSize)) {
+                return new int[]{newR, newC};
             }
         }
         

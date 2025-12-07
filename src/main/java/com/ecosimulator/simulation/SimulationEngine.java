@@ -453,7 +453,8 @@ public class SimulationEngine {
     }
     
     /**
-     * Flee from predators using Dijkstra pathfinding for more realistic fleeing behavior
+     * Flee from predators using Dijkstra pathfinding for more realistic fleeing behavior.
+     * Enhanced to handle border cases - prey can still move even when at edges.
      */
     private boolean fleeFromPredators(Creature prey, int currentRow, int currentCol, 
                                      List<int[]> neighbors) {
@@ -481,9 +482,25 @@ public class SimulationEngine {
         int[] nextMove = PathfindingUtils.findNextMove(grid, currentRow, currentCol, 
                                                        CellType.PREDATOR, detectionRange, true);
         
-        if (nextMove != null && grid[nextMove[0]][nextMove[1]] == CellType.EMPTY) {
-            moveCreature(prey, nextMove[0], nextMove[1], currentRow, currentCol);
-            return true;
+        if (nextMove != null) {
+            CellType targetCell = grid[nextMove[0]][nextMove[1]];
+            // Allow movement to empty cells, water, or food (but not other creatures/corpses)
+            if (targetCell == CellType.EMPTY || targetCell == CellType.WATER || targetCell == CellType.FOOD) {
+                moveCreature(prey, nextMove[0], nextMove[1], currentRow, currentCol);
+                // If moved to water or food, consume it
+                if (targetCell == CellType.WATER) {
+                    int thirstBefore = prey.getThirst();
+                    prey.drink();
+                    stats.incrementWaterConsumed();
+                    eventLogger.logWaterConsumed(stats.getTurn(), prey, nextMove[0], nextMove[1], thirstBefore);
+                } else if (targetCell == CellType.FOOD) {
+                    int hungerBefore = prey.getHunger();
+                    prey.eatFood();
+                    stats.incrementFoodConsumed();
+                    eventLogger.logFoodConsumed(stats.getTurn(), prey, nextMove[0], nextMove[1], hungerBefore);
+                }
+                return true;
+            }
         }
         
         return false;
