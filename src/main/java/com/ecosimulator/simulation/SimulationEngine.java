@@ -385,7 +385,7 @@ public class SimulationEngine {
         // Priority 9: Move to empty cell (random movement as fallback to prevent staying in same cell)
         for (int[] neighbor : neighbors) {
             CellType cellType = grid[neighbor[0]][neighbor[1]];
-            if (cellType == CellType.EMPTY) {
+            if (cellType == CellType.EMPTY && isCellAvailable(neighbor[0], neighbor[1])) {
                 moveCreature(creature, neighbor[0], neighbor[1], row, col);
                 return;
             }
@@ -395,7 +395,7 @@ public class SimulationEngine {
         // This prevents creatures from getting stuck in corners or crowded areas
         for (int[] neighbor : neighbors) {
             CellType cellType = grid[neighbor[0]][neighbor[1]];
-            if (cellType == CellType.WATER || cellType == CellType.FOOD) {
+            if ((cellType == CellType.WATER || cellType == CellType.FOOD) && isCellAvailable(neighbor[0], neighbor[1])) {
                 moveCreature(creature, neighbor[0], neighbor[1], row, col);
                 consumeResourceIfCompatible(creature, cellType);
                 return;
@@ -405,8 +405,17 @@ public class SimulationEngine {
 
     /**
      * Move creature from current position to new position
+     * Anti-overlap algorithm: Checks if destination is already occupied before moving
      */
     private void moveCreature(Creature creature, int newRow, int newCol, int oldRow, int oldCol) {
+        // Anti-overlap check: Verify destination is not occupied by another creature
+        String destinationKey = positionKey(newRow, newCol);
+        Creature occupant = creaturePositionMap.get(destinationKey);
+        if (occupant != null && occupant != creature) {
+            // Cell is already occupied by another creature, cancel move
+            return;
+        }
+        
         CellType cellAtDestination = grid[newRow][newCol];
         
         creaturePositionMap.remove(positionKey(oldRow, oldCol));
@@ -461,7 +470,7 @@ public class SimulationEngine {
             int[] nextMove = PathfindingUtils.findNextMove(grid, currentRow, currentCol, 
                                                            CellType.PREY, searchRange, false);
             
-            if (nextMove != null && grid[nextMove[0]][nextMove[1]] == CellType.EMPTY) {
+            if (nextMove != null && grid[nextMove[0]][nextMove[1]] == CellType.EMPTY && isCellAvailable(nextMove[0], nextMove[1])) {
                 moveCreature(predator, nextMove[0], nextMove[1], currentRow, currentCol);
                 return true;
             }
@@ -503,7 +512,8 @@ public class SimulationEngine {
         if (nextMove != null) {
             CellType targetCell = grid[nextMove[0]][nextMove[1]];
             // Allow movement to empty cells, water, or food (but not other creatures/corpses)
-            if (isMovableCell(targetCell)) {
+            // Also check if cell is not already occupied (anti-overlap)
+            if (isMovableCell(targetCell) && isCellAvailable(nextMove[0], nextMove[1])) {
                 moveCreature(prey, nextMove[0], nextMove[1], currentRow, currentCol);
                 // If moved to water or food, consume it
                 if (targetCell == CellType.WATER) {
@@ -533,6 +543,19 @@ public class SimulationEngine {
     }
     
     /**
+     * Check if a cell is available for movement (right type AND not occupied by another creature)
+     * This is part of the anti-overlap algorithm to prevent multiple creatures in same cell
+     */
+    private boolean isCellAvailable(int row, int col) {
+        CellType cellType = grid[row][col];
+        if (!isMovableCell(cellType)) {
+            return false;
+        }
+        // Check if there's already a creature at this position
+        return creaturePositionMap.get(positionKey(row, col)) == null;
+    }
+    
+    /**
      * Consume a resource if the creature is compatible with it.
      * This is a simplified version used for fallback movement to prevent getting stuck.
      * For normal resource seeking, use seekAndConsumeResourceWithPathfinding which includes logging.
@@ -553,7 +576,7 @@ public class SimulationEngine {
                                                          List<int[]> neighbors) {
         // First check immediate neighbors
         for (int[] neighbor : neighbors) {
-            if (grid[neighbor[0]][neighbor[1]] == resourceType) {
+            if (grid[neighbor[0]][neighbor[1]] == resourceType && isCellAvailable(neighbor[0], neighbor[1])) {
                 moveCreature(creature, neighbor[0], neighbor[1], currentRow, currentCol);
                 
                 if (resourceType == CellType.WATER) {
@@ -582,7 +605,7 @@ public class SimulationEngine {
         int[] nextMove = PathfindingUtils.findNextMove(grid, currentRow, currentCol, 
                                                        resourceType, searchRange, false);
         
-        if (nextMove != null && grid[nextMove[0]][nextMove[1]] == CellType.EMPTY) {
+        if (nextMove != null && grid[nextMove[0]][nextMove[1]] == CellType.EMPTY && isCellAvailable(nextMove[0], nextMove[1])) {
             moveCreature(creature, nextMove[0], nextMove[1], currentRow, currentCol);
             return true;
         }
@@ -624,7 +647,7 @@ public class SimulationEngine {
         int[] nextMove = PathfindingUtils.findNextMove(grid, currentRow, currentCol, 
                                                        CellType.CORPSE, searchRange, false);
         
-        if (nextMove != null && grid[nextMove[0]][nextMove[1]] == CellType.EMPTY) {
+        if (nextMove != null && grid[nextMove[0]][nextMove[1]] == CellType.EMPTY && isCellAvailable(nextMove[0], nextMove[1])) {
             moveCreature(scavenger, nextMove[0], nextMove[1], currentRow, currentCol);
             return true;
         }
@@ -660,9 +683,9 @@ public class SimulationEngine {
             return null; // No suitable mate found
         }
 
-        // Find an empty cell for offspring
+        // Find an empty cell for offspring (anti-overlap check)
         for (int[] neighbor : neighbors) {
-            if (grid[neighbor[0]][neighbor[1]] == CellType.EMPTY) {
+            if (grid[neighbor[0]][neighbor[1]] == CellType.EMPTY && isCellAvailable(neighbor[0], neighbor[1])) {
                 // Use ReproductionManager for proper mating validation
                 Creature offspring = reproductionManager.reproduce(
                     parent, mate, neighbor[0], neighbor[1], config.isMutationsEnabled());
