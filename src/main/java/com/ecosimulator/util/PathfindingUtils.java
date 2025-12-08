@@ -237,9 +237,16 @@ public class PathfindingUtils {
                                   firstMove.row, firstMove.col, gridSize);
         }
         
-        // Return first move towards target
+        // Return first move towards target (ensure it's only 1 cell away)
         if (firstMove.parent != null) {
-            return new int[]{firstMove.row, firstMove.col};
+            int rowDiff = Math.abs(firstMove.row - startRow);
+            int colDiff = Math.abs(firstMove.col - startCol);
+            // Safety check: only allow moves to adjacent cells in 8 directions
+            // This includes diagonals (max 1 cell in any direction)
+            // rowDiff <= 1 && colDiff <= 1 allows N, S, E, W, NE, NW, SE, SW
+            if (rowDiff <= 1 && colDiff <= 1) {
+                return new int[]{firstMove.row, firstMove.col};
+            }
         }
         
         return null;

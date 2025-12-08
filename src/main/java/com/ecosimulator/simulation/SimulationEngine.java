@@ -374,8 +374,15 @@ public class SimulationEngine {
                 return;
             }
         }
+        
+        // Priority 8: Scavengers seek corpses (unconditional but with threshold to reduce pathfinding overhead)
+        if (creature.getType() == CellType.THIRD_SPECIES && creature.getHunger() > 10) {
+            if (processScavengerActionWithPathfinding(creature, consumedCorpses, row, col, neighbors)) {
+                return;
+            }
+        }
 
-        // Priority 8: Move to empty cell (random movement as fallback)
+        // Priority 9: Move to empty cell (random movement as fallback to prevent staying in same cell)
         for (int[] neighbor : neighbors) {
             CellType cellType = grid[neighbor[0]][neighbor[1]];
             if (cellType == CellType.EMPTY) {
@@ -676,25 +683,13 @@ public class SimulationEngine {
     }
 
     /**
-     * Get movement range for a creature based on its type and energy
+     * Get movement range for a creature
+     * All creatures move 1 cell per turn in 8 directions to prevent illogical multi-cell jumps
      */
     private int getMovementRange(Creature creature) {
-        // Base movement range by creature type
-        // Reduced predator range to 1 to reduce per-turn hunting efficiency
-        // This extends overall simulation duration for better educational value
-        int baseRange = switch (creature.getType()) {
-            case PREDATOR -> 1;  // Predators move 1 cell per turn (reduced hunting efficiency)
-            case PREY -> 2;      // Prey can move 2 cells (better escape capability)
-            case THIRD_SPECIES -> 2;  // Scavengers can move 2 cells
-            default -> 1;
-        };
-        
-        // Reduce range if energy is very low (less than 5)
-        if (creature.getEnergy() < 5) {
-            return Math.max(1, baseRange - 1);
-        }
-        
-        return baseRange;
+        // All creatures move 1 cell per turn to prevent illogical jumps
+        // Movement is restricted to the 8 adjacent cells (N, S, E, W, NE, NW, SE, SW)
+        return 1;
     }
     
     /**
