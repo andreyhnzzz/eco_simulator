@@ -50,6 +50,15 @@ Each scenario can be run with optional extensions:
 
 ## Building and Running
 
+### Windows (Easy Method)
+Simply double-click `run.bat` or run it from command prompt:
+```cmd
+run.bat
+```
+
+The script will automatically compile and launch the application.
+
+### Manual Method (All Platforms)
 ```bash
 # Build the project
 mvn clean compile
@@ -113,6 +122,7 @@ src/main/resources/
 4. Creatures lose energy each turn and die when energy reaches 0
 5. Creatures with enough energy can reproduce
 6. Mutated creatures have a 50% bonus to efficiency
+7. **Anti-overlap Algorithm**: Each cell can only contain one creature at a time, preventing collisions and ensuring realistic spatial dynamics
 
 ## OAuth2 Authentication for Gmail
 
