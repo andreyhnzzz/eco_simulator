@@ -375,8 +375,8 @@ public class ResultsScreen extends StackPane {
         container.setAlignment(Pos.CENTER);
         container.setPadding(new Insets(20, 0, 0, 0));
         
-        // Next Simulation button (only shown when in consecutive simulation mode)
-        Button nextSimButton = new Button("➡️ Next Simulation");
+        // Next Scenario button (always shown to allow starting consecutive simulations)
+        Button nextSimButton = new Button("➡️ Siguiente Escenario");
         nextSimButton.getStyleClass().addAll("action-button", "start-button");
         nextSimButton.setOnAction(e -> {
             AnimationUtils.playButtonClickAnimation(nextSimButton);
@@ -387,8 +387,8 @@ public class ResultsScreen extends StackPane {
         });
         AnimationUtils.applyButtonHoverAnimation(nextSimButton);
         
-        // Export PDF button (renamed from "Export PDF" to "Finish Simulation and Generate Report")
-        Button exportButton = new Button("📄 Finish Simulation and Generate Report");
+        // Export PDF button (renamed from "Export PDF" to "Finalizar y Generar Reporte")
+        Button exportButton = new Button("📄 Finalizar y Generar Reporte");
         exportButton.getStyleClass().addAll("action-button", "reset-button");
         exportButton.setOnAction(e -> {
             AnimationUtils.playButtonClickAnimation(exportButton);
@@ -397,7 +397,7 @@ public class ResultsScreen extends StackPane {
         AnimationUtils.applyButtonHoverAnimation(exportButton);
         
         // Send Report button (NEW - only enabled after report is generated)
-        sendReportButton = new Button("📧 Send Report");
+        sendReportButton = new Button("📧 Enviar Reporte");
         sendReportButton.getStyleClass().addAll("action-button", "start-button");
         sendReportButton.setDisable(true); // Disabled until report is generated
         sendReportButton.setOnAction(e -> {
@@ -407,7 +407,7 @@ public class ResultsScreen extends StackPane {
         AnimationUtils.applyButtonHoverAnimation(sendReportButton);
         
         // Close button
-        Button closeButton = new Button("✖ Close");
+        Button closeButton = new Button("✖ Cerrar");
         closeButton.getStyleClass().addAll("action-button", "settings-button");
         closeButton.setOnAction(e -> {
             AnimationUtils.playButtonClickAnimation(closeButton);
@@ -415,12 +415,8 @@ public class ResultsScreen extends StackPane {
         });
         AnimationUtils.applyButtonHoverAnimation(closeButton);
         
-        // Only add Next Simulation button if callback is provided (consecutive mode)
-        if (onNextSimulation != null) {
-            container.getChildren().addAll(nextSimButton, exportButton, sendReportButton, closeButton);
-        } else {
-            container.getChildren().addAll(exportButton, sendReportButton, closeButton);
-        }
+        // Always add Next Scenario button to enable consecutive simulations
+        container.getChildren().addAll(nextSimButton, exportButton, sendReportButton, closeButton);
         return container;
     }
     

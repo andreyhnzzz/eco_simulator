@@ -390,6 +390,22 @@ public class SimulationEngine {
                 return;
             }
         }
+        
+        // Priority 10: If no empty cells in movement range, try moving to cells with resources
+        // This prevents creatures from getting stuck in corners or crowded areas
+        for (int[] neighbor : neighbors) {
+            CellType cellType = grid[neighbor[0]][neighbor[1]];
+            if (cellType == CellType.WATER || cellType == CellType.FOOD) {
+                moveCreature(creature, neighbor[0], neighbor[1], row, col);
+                // Consume resource if compatible
+                if (cellType == CellType.WATER) {
+                    creature.drinkWater();
+                } else if (cellType == CellType.FOOD && creature.getType() == CellType.PREY) {
+                    creature.eatFood();
+                }
+                return;
+            }
+        }
     }
 
     /**
