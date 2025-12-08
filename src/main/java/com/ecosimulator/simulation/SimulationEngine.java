@@ -399,7 +399,7 @@ public class SimulationEngine {
                 moveCreature(creature, neighbor[0], neighbor[1], row, col);
                 // Consume resource if compatible
                 if (cellType == CellType.WATER) {
-                    creature.drinkWater();
+                    creature.drink();
                 } else if (cellType == CellType.FOOD && creature.getType() == CellType.PREY) {
                     creature.eatFood();
                 }
