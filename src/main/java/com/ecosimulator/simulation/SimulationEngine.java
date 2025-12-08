@@ -683,7 +683,7 @@ public class SimulationEngine {
     }
 
     /**
-     * Get movement range for a creature based on its type and energy
+     * Get movement range for a creature
      * All creatures move 1 cell per turn in 8 directions to prevent illogical multi-cell jumps
      */
     private int getMovementRange(Creature creature) {
