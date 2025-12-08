@@ -408,7 +408,9 @@ public class SimulationEngine {
      * Anti-overlap algorithm: Checks if destination is already occupied before moving
      */
     private void moveCreature(Creature creature, int newRow, int newCol, int oldRow, int oldCol) {
-        // Anti-overlap check: Verify destination is not occupied by another creature
+        // Defensive anti-overlap check: Verify destination is not occupied by another creature
+        // While callers should use isCellAvailable() first, this provides a safety net
+        // against race conditions in concurrent execution and programming errors
         String destinationKey = positionKey(newRow, newCol);
         Creature occupant = creaturePositionMap.get(destinationKey);
         if (occupant != null && occupant != creature) {
@@ -543,8 +545,9 @@ public class SimulationEngine {
     }
     
     /**
-     * Check if a cell is available for movement (right type AND not occupied by another creature)
+     * Check if a cell is available for movement (movable type AND not occupied by another creature)
      * This is part of the anti-overlap algorithm to prevent multiple creatures in same cell
+     * @return true if the cell is movable (EMPTY, WATER, or FOOD) and has no creature occupying it
      */
     private boolean isCellAvailable(int row, int col) {
         CellType cellType = grid[row][col];
