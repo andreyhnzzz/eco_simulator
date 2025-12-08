@@ -397,12 +397,7 @@ public class SimulationEngine {
             CellType cellType = grid[neighbor[0]][neighbor[1]];
             if (cellType == CellType.WATER || cellType == CellType.FOOD) {
                 moveCreature(creature, neighbor[0], neighbor[1], row, col);
-                // Consume resource if compatible
-                if (cellType == CellType.WATER) {
-                    creature.drink();
-                } else if (cellType == CellType.FOOD && creature.getType() == CellType.PREY) {
-                    creature.eatFood();
-                }
+                consumeResourceIfCompatible(creature, cellType);
                 return;
             }
         }
@@ -535,6 +530,19 @@ public class SimulationEngine {
      */
     private boolean isMovableCell(CellType cellType) {
         return cellType == CellType.EMPTY || cellType == CellType.WATER || cellType == CellType.FOOD;
+    }
+    
+    /**
+     * Consume a resource if the creature is compatible with it.
+     * This is a simplified version used for fallback movement to prevent getting stuck.
+     * For normal resource seeking, use seekAndConsumeResourceWithPathfinding which includes logging.
+     */
+    private void consumeResourceIfCompatible(Creature creature, CellType cellType) {
+        if (cellType == CellType.WATER) {
+            creature.drink();
+        } else if (cellType == CellType.FOOD && creature.getType() == CellType.PREY) {
+            creature.eatFood();
+        }
     }
     
     /**
