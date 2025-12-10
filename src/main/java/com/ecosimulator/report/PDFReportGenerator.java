@@ -165,6 +165,55 @@ public class PDFReportGenerator {
                 }
             }
 
+            // Add Dominance Index Chart on a new page
+            PDPage dominancePage = new PDPage(PDRectangle.A4);
+            document.addPage(dominancePage);
+            float dominancePageHeight = dominancePage.getMediaBox().getHeight();
+            float dominanceYPosition = dominancePageHeight - MARGIN;
+            
+            try (PDPageContentStream dominanceContentStream = new PDPageContentStream(document, dominancePage)) {
+                // Title for dominance chart
+                dominanceContentStream.beginText();
+                dominanceContentStream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD), 16);
+                dominanceContentStream.newLineAtOffset(MARGIN, dominanceYPosition);
+                dominanceContentStream.showText("Final Dominance Index");
+                dominanceContentStream.endText();
+                dominanceYPosition -= 40;
+                
+                // Calculate dominance indices
+                double predatorDominance = stats.getDominanceIndex(com.ecosimulator.model.CellType.PREDATOR);
+                double preyDominance = stats.getDominanceIndex(com.ecosimulator.model.CellType.PREY);
+                double thirdSpeciesDominance = stats.getDominanceIndex(com.ecosimulator.model.CellType.THIRD_SPECIES);
+                
+                // Create and add dominance chart
+                BufferedImage dominanceChart = ChartGenerator.createDominanceIndexChart(
+                    predatorDominance, preyDominance, thirdSpeciesDominance);
+                PDImageXObject dominanceImage = LosslessFactory.createFromImage(document, dominanceChart);
+                
+                float imageWidth = 350;
+                float imageHeight = 263;
+                float imageX = (pageWidth - imageWidth) / 2;
+                
+                dominanceContentStream.drawImage(dominanceImage, imageX, dominanceYPosition - imageHeight, imageWidth, imageHeight);
+                dominanceYPosition -= (imageHeight + 30);
+                
+                // Add text summary of dominance indices
+                String[] dominanceLines = {
+                    String.format("Predators: %.2f%%", predatorDominance * 100),
+                    String.format("Prey: %.2f%%", preyDominance * 100),
+                    String.format("Scavenger: %.2f%%", thirdSpeciesDominance * 100)
+                };
+                
+                dominanceContentStream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+                for (String line : dominanceLines) {
+                    dominanceContentStream.beginText();
+                    dominanceContentStream.newLineAtOffset(MARGIN, dominanceYPosition);
+                    dominanceContentStream.showText(line);
+                    dominanceContentStream.endText();
+                    dominanceYPosition -= LINE_HEIGHT;
+                }
+            }
+
             document.save(outputPath);
         }
     }
@@ -474,6 +523,55 @@ public class PDFReportGenerator {
                 }
             } else {
                 contentStream.drawImage(populationImage, imageX, yPosition - imageHeight, imageWidth, imageHeight);
+            }
+        }
+        
+        // Add Dominance Index Chart on a new page
+        PDPage dominancePage = new PDPage(PDRectangle.A4);
+        document.addPage(dominancePage);
+        float dominanceYPosition = dominancePage.getMediaBox().getHeight() - MARGIN;
+        
+        try (PDPageContentStream dominanceContentStream = new PDPageContentStream(document, dominancePage)) {
+            // Title for dominance chart
+            dominanceContentStream.beginText();
+            dominanceContentStream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD), 16);
+            dominanceContentStream.newLineAtOffset(MARGIN, dominanceYPosition);
+            dominanceContentStream.showText("Simulation #" + result.getSimulationNumber() + " - Final Dominance Index");
+            dominanceContentStream.endText();
+            dominanceYPosition -= 40;
+            
+            // Calculate dominance indices
+            SimulationStats stats = result.getFinalStats();
+            double predatorDominance = stats.getDominanceIndex(com.ecosimulator.model.CellType.PREDATOR);
+            double preyDominance = stats.getDominanceIndex(com.ecosimulator.model.CellType.PREY);
+            double thirdSpeciesDominance = stats.getDominanceIndex(com.ecosimulator.model.CellType.THIRD_SPECIES);
+            
+            // Create and add dominance chart
+            BufferedImage dominanceChart = ChartGenerator.createDominanceIndexChart(
+                predatorDominance, preyDominance, thirdSpeciesDominance);
+            PDImageXObject dominanceImage = LosslessFactory.createFromImage(document, dominanceChart);
+            
+            float imageWidth = 300;
+            float imageHeight = 225;
+            float imageX = (pageWidth - imageWidth) / 2;
+            
+            dominanceContentStream.drawImage(dominanceImage, imageX, dominanceYPosition - imageHeight, imageWidth, imageHeight);
+            dominanceYPosition -= (imageHeight + 30);
+            
+            // Add text summary of dominance indices
+            String[] dominanceLines = {
+                String.format("Predators: %.2f%%", predatorDominance * 100),
+                String.format("Prey: %.2f%%", preyDominance * 100),
+                String.format("Scavenger: %.2f%%", thirdSpeciesDominance * 100)
+            };
+            
+            dominanceContentStream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+            for (String line : dominanceLines) {
+                dominanceContentStream.beginText();
+                dominanceContentStream.newLineAtOffset(MARGIN, dominanceYPosition);
+                dominanceContentStream.showText(line);
+                dominanceContentStream.endText();
+                dominanceYPosition -= LINE_HEIGHT;
             }
         }
     }

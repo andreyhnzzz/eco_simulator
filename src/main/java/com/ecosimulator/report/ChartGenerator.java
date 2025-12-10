@@ -2,7 +2,10 @@ package com.ecosimulator.report;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.plot.CategoryPlot;
 import org.jfree.chart.plot.PiePlot;
+import org.jfree.chart.renderer.category.BarRenderer;
+import org.jfree.data.category.DefaultCategoryDataset;
 import org.jfree.data.general.DefaultPieDataset;
 
 import java.awt.*;
@@ -118,6 +121,46 @@ public class ChartGenerator {
         plot.setSectionPaint("Water Consumed", new Color(0x21, 0x96, 0xF3)); // Blue
         plot.setSectionPaint("Food Consumed", new Color(0x8B, 0xC3, 0x4A)); // Light green
 
+        return chart.createBufferedImage(400, 300);
+    }
+
+    /**
+     * Create a bar chart showing dominance index for each species
+     * @param predatorDominance dominance index for predators (0.0 to 1.0)
+     * @param preyDominance dominance index for prey (0.0 to 1.0)
+     * @param thirdSpeciesDominance dominance index for third species (0.0 to 1.0)
+     * @return BufferedImage containing the chart
+     */
+    public static BufferedImage createDominanceIndexChart(double predatorDominance, 
+                                                          double preyDominance, 
+                                                          double thirdSpeciesDominance) {
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+        dataset.addValue(predatorDominance, "Dominance Index", "Predators");
+        dataset.addValue(preyDominance, "Dominance Index", "Prey");
+        if (thirdSpeciesDominance > 0) {
+            dataset.addValue(thirdSpeciesDominance, "Dominance Index", "Scavenger");
+        }
+
+        JFreeChart chart = ChartFactory.createBarChart(
+            "Dominance Index by Species",
+            "Species",
+            "Dominance Index",
+            dataset
+        );
+
+        chart.setBackgroundPaint(Color.WHITE);
+        CategoryPlot plot = (CategoryPlot) chart.getPlot();
+        plot.setBackgroundPaint(Color.WHITE);
+        plot.setOutlinePaint(null);
+        plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
+        
+        // Customize bar colors
+        BarRenderer renderer = (BarRenderer) plot.getRenderer();
+        renderer.setSeriesPaint(0, PREDATOR_COLOR);
+        
+        // Set individual bar colors based on category
+        renderer.setSeriesPaint(0, new Color(0x4C, 0xAF, 0x50)); // Default green for dominance
+        
         return chart.createBufferedImage(400, 300);
     }
 }
