@@ -135,10 +135,10 @@ public class ChartGenerator {
                                                           double preyDominance, 
                                                           double thirdSpeciesDominance) {
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
-        dataset.addValue(predatorDominance, "Dominance Index", "Predators");
-        dataset.addValue(preyDominance, "Dominance Index", "Prey");
+        dataset.addValue(predatorDominance, "Predators", "Predators");
+        dataset.addValue(preyDominance, "Prey", "Prey");
         if (thirdSpeciesDominance > 0) {
-            dataset.addValue(thirdSpeciesDominance, "Dominance Index", "Scavenger");
+            dataset.addValue(thirdSpeciesDominance, "Scavenger", "Scavenger");
         }
 
         JFreeChart chart = ChartFactory.createBarChart(
@@ -154,12 +154,13 @@ public class ChartGenerator {
         plot.setOutlinePaint(null);
         plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
         
-        // Customize bar colors
+        // Customize bar colors for each series (species)
         BarRenderer renderer = (BarRenderer) plot.getRenderer();
         renderer.setSeriesPaint(0, PREDATOR_COLOR);
-        
-        // Set individual bar colors based on category
-        renderer.setSeriesPaint(0, new Color(0x4C, 0xAF, 0x50)); // Default green for dominance
+        renderer.setSeriesPaint(1, PREY_COLOR);
+        if (thirdSpeciesDominance > 0) {
+            renderer.setSeriesPaint(2, THIRD_SPECIES_COLOR);
+        }
         
         return chart.createBufferedImage(400, 300);
     }
