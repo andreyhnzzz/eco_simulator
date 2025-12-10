@@ -30,6 +30,9 @@ public class Creature {
     private int matingCooldown; // Turns remaining before can mate again
     private int hunger; // Hunger level (0-100, dies at 100)
     private int thirst; // Thirst level (0-100, dies at 100)
+    private int turnsInSamePosition; // Counter to track how long creature has been in same position
+    private int lastRow; // Previous row position
+    private int lastCol; // Previous column position
 
     /**
      * Creates a new creature with randomly assigned sex
@@ -55,6 +58,9 @@ public class Creature {
         this.matingCooldown = 0;
         this.hunger = 0; // Start with no hunger
         this.thirst = 0; // Start with no thirst
+        this.turnsInSamePosition = 0;
+        this.lastRow = row;
+        this.lastCol = col;
     }
 
     private int getInitialEnergy(CellType type) {
@@ -67,9 +73,37 @@ public class Creature {
     }
 
     public void move(int newRow, int newCol) {
+        // Track if creature actually moved to a different position
+        if (newRow != this.row || newCol != this.col) {
+            this.turnsInSamePosition = 0;
+        }
+        this.lastRow = this.row;
+        this.lastCol = this.col;
         this.row = newRow;
         this.col = newCol;
         this.energy -= 1;
+    }
+
+    /**
+     * Update position tracking without moving (called when creature stays in same cell)
+     */
+    public void updatePositionTracking() {
+        if (this.row == this.lastRow && this.col == this.lastCol) {
+            this.turnsInSamePosition++;
+        } else {
+            this.turnsInSamePosition = 0;
+        }
+        this.lastRow = this.row;
+        this.lastCol = this.col;
+    }
+
+    /**
+     * Check if creature has been stuck in same position for too long
+     * @param threshold number of turns before considered stuck
+     * @return true if creature has been in same position for >= threshold turns
+     */
+    public boolean isStuck(int threshold) {
+        return this.turnsInSamePosition >= threshold;
     }
 
     public void eat(int energyGain) {
@@ -247,6 +281,8 @@ public class Creature {
 
     public int getThirst() { return thirst; }
     public void setThirst(int thirst) { this.thirst = thirst; }
+
+    public int getTurnsInSamePosition() { return turnsInSamePosition; }
 
     /**
      * Get the unique identifier string (e.g., "M-103" or "F-45")
