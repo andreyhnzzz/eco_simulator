@@ -381,17 +381,10 @@ public class SimulationEngine {
             }
         }
 
-        // Priority 8: Scavengers seek corpses or water
+        // Priority 8: Scavengers seek corpses (consolidated from multiple priority levels)
         if (creature.getType() == CellType.THIRD_SPECIES) {
-            // Try corpses first
             if (processScavengerActionWithPathfinding(creature, consumedCorpses, row, col, neighbors)) {
                 return;
-            }
-            // Then try water
-            if (creature.getThirst() > 10) {
-                if (seekAndConsumeResourceWithPathfinding(creature, CellType.WATER, row, col, neighbors)) {
-                    return;
-                }
             }
         }
 
@@ -935,13 +928,19 @@ public class SimulationEngine {
             }
         } else {
             // Batch selection for large populations
-            // Randomly select approximately expectedMutations creatures to mutate
+            // Randomly select creatures to mutate, using double the expected count
+            // with 50% acceptance rate to maintain statistical consistency with 2% rate
+            // Formula: (2 * expectedMutations) * 0.5 = expectedMutations on average
             Collections.shuffle(nonMutatedCreatures, random);
-            int toMutate = Math.min(expectedMutations, nonMutatedCreatures.size());
+            int candidateCount = Math.min(expectedMutations * 2, nonMutatedCreatures.size());
             
-            for (int i = 0; i < toMutate; i++) {
-                // Additional random check to maintain probabilistic behavior
-                if (random.nextDouble() < 0.5) {
+            // Acceptance probability: ensures overall 2% mutation rate is maintained
+            // When candidateCount = 2*expectedMutations, acceptProb = 0.5 gives expectedMutations on average
+            double acceptanceProb = (expectedMutations > 0) ? 
+                (double) expectedMutations / candidateCount : mutationRate;
+            
+            for (int i = 0; i < candidateCount; i++) {
+                if (random.nextDouble() < acceptanceProb) {
                     Creature creature = nonMutatedCreatures.get(i);
                     creature.mutate();
                     eventLogger.logMutationActivated(stats.getTurn(), creature);
