@@ -135,10 +135,11 @@ public class ChartGenerator {
                                                           double preyDominance, 
                                                           double thirdSpeciesDominance) {
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
-        dataset.addValue(predatorDominance, "Predators", "Predators");
-        dataset.addValue(preyDominance, "Prey", "Prey");
+        // Use a single series "Index" with different categories for each species
+        dataset.addValue(predatorDominance, "Index", "Predators");
+        dataset.addValue(preyDominance, "Index", "Prey");
         if (thirdSpeciesDominance > 0) {
-            dataset.addValue(thirdSpeciesDominance, "Scavenger", "Scavenger");
+            dataset.addValue(thirdSpeciesDominance, "Index", "Scavenger");
         }
 
         JFreeChart chart = ChartFactory.createBarChart(
@@ -154,13 +155,20 @@ public class ChartGenerator {
         plot.setOutlinePaint(null);
         plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
         
-        // Customize bar colors for each series (species)
-        BarRenderer renderer = (BarRenderer) plot.getRenderer();
-        renderer.setSeriesPaint(0, PREDATOR_COLOR);
-        renderer.setSeriesPaint(1, PREY_COLOR);
-        if (thirdSpeciesDominance > 0) {
-            renderer.setSeriesPaint(2, THIRD_SPECIES_COLOR);
-        }
+        // Customize bar colors - use a custom renderer to set color per category
+        BarRenderer renderer = new BarRenderer() {
+            @Override
+            public Paint getItemPaint(int row, int column) {
+                // column 0 = Predators, column 1 = Prey, column 2 = Scavenger
+                return switch (column) {
+                    case 0 -> PREDATOR_COLOR;
+                    case 1 -> PREY_COLOR;
+                    case 2 -> THIRD_SPECIES_COLOR;
+                    default -> super.getItemPaint(row, column);
+                };
+            }
+        };
+        plot.setRenderer(renderer);
         
         return chart.createBufferedImage(400, 300);
     }
