@@ -144,23 +144,56 @@ public class PDFReportGenerator {
                 contentStream.drawImage(occupancyImage, imageX, yPosition - imageHeight, imageWidth, imageHeight);
                 yPosition -= (imageHeight + 30);
 
-                // Resource Consumption Chart (if resources were consumed)
-                if (stats.getTotalWaterConsumed() > 0 || stats.getTotalFoodConsumed() > 0) {
-                    BufferedImage resourceChart = ChartGenerator.createResourceConsumptionChart(
-                        stats.getTotalWaterConsumed(), stats.getTotalFoodConsumed());
-                    PDImageXObject resourceImage = LosslessFactory.createFromImage(document, resourceChart);
+                // Dominance Index Chart - always include this chart
+                double predatorDominance = stats.getDominanceIndex(com.ecosimulator.model.CellType.PREDATOR);
+                double preyDominance = stats.getDominanceIndex(com.ecosimulator.model.CellType.PREY);
+                double thirdSpeciesDominance = stats.getDominanceIndex(com.ecosimulator.model.CellType.THIRD_SPECIES);
+                boolean includeThirdSpecies = stats.getThirdSpeciesCount() > 0;
+                
+                BufferedImage dominanceChart = ChartGenerator.createDominancePieChart(
+                    predatorDominance, preyDominance, thirdSpeciesDominance, includeThirdSpecies);
+                PDImageXObject dominanceImage = LosslessFactory.createFromImage(document, dominanceChart);
+                
+                // Add new page if needed for dominance chart
+                if (yPosition < imageHeight + MARGIN) {
+                    PDPage newPage = new PDPage(PDRectangle.A4);
+                    document.addPage(newPage);
+                    yPosition = newPage.getMediaBox().getHeight() - MARGIN;
                     
-                    // Add new page if needed
-                    if (yPosition < imageHeight + MARGIN) {
-                        PDPage newPage = new PDPage(PDRectangle.A4);
-                        document.addPage(newPage);
-                        yPosition = newPage.getMediaBox().getHeight() - MARGIN;
+                    try (PDPageContentStream newContentStream = new PDPageContentStream(document, newPage)) {
+                        newContentStream.drawImage(dominanceImage, imageX, yPosition - imageHeight, imageWidth, imageHeight);
+                        yPosition -= (imageHeight + 30);
                         
-                        try (PDPageContentStream newContentStream = new PDPageContentStream(document, newPage)) {
+                        // Resource Consumption Chart on new page if needed
+                        if (stats.getTotalWaterConsumed() > 0 || stats.getTotalFoodConsumed() > 0) {
+                            BufferedImage resourceChart = ChartGenerator.createResourceConsumptionChart(
+                                stats.getTotalWaterConsumed(), stats.getTotalFoodConsumed());
+                            PDImageXObject resourceImage = LosslessFactory.createFromImage(document, resourceChart);
                             newContentStream.drawImage(resourceImage, imageX, yPosition - imageHeight, imageWidth, imageHeight);
                         }
-                    } else {
-                        contentStream.drawImage(resourceImage, imageX, yPosition - imageHeight, imageWidth, imageHeight);
+                    }
+                } else {
+                    contentStream.drawImage(dominanceImage, imageX, yPosition - imageHeight, imageWidth, imageHeight);
+                    yPosition -= (imageHeight + 30);
+                    
+                    // Resource Consumption Chart (if resources were consumed)
+                    if (stats.getTotalWaterConsumed() > 0 || stats.getTotalFoodConsumed() > 0) {
+                        BufferedImage resourceChart = ChartGenerator.createResourceConsumptionChart(
+                            stats.getTotalWaterConsumed(), stats.getTotalFoodConsumed());
+                        PDImageXObject resourceImage = LosslessFactory.createFromImage(document, resourceChart);
+                        
+                        // Add new page if needed
+                        if (yPosition < imageHeight + MARGIN) {
+                            PDPage newPage = new PDPage(PDRectangle.A4);
+                            document.addPage(newPage);
+                            yPosition = newPage.getMediaBox().getHeight() - MARGIN;
+                            
+                            try (PDPageContentStream newContentStream = new PDPageContentStream(document, newPage)) {
+                                newContentStream.drawImage(resourceImage, imageX, yPosition - imageHeight, imageWidth, imageHeight);
+                            }
+                        } else {
+                            contentStream.drawImage(resourceImage, imageX, yPosition - imageHeight, imageWidth, imageHeight);
+                        }
                     }
                 }
             }
@@ -220,6 +253,11 @@ public class PDFReportGenerator {
 
                 int totalCells = gridSize * gridSize;
                 double occupancyPercent = (double) stats.getTotalCreatures() / totalCells * 100;
+                
+                // Calculate dominance indices
+                double predatorDominance = stats.getDominanceIndex(com.ecosimulator.model.CellType.PREDATOR);
+                double preyDominance = stats.getDominanceIndex(com.ecosimulator.model.CellType.PREY);
+                double thirdSpeciesDominance = stats.getDominanceIndex(com.ecosimulator.model.CellType.THIRD_SPECIES);
 
                 String[] lines = {
                     "Total Turns: " + totalTurns,
@@ -231,6 +269,11 @@ public class PDFReportGenerator {
                     "  - Third Species: " + stats.getThirdSpeciesCount(),
                     "  - Mutated: " + stats.getMutatedCount(),
                     "  - Total: " + stats.getTotalCreatures(),
+                    "",
+                    "Dominance Index:",
+                    String.format("  - Predators: %.1f%%", predatorDominance * 100),
+                    String.format("  - Prey: %.1f%%", preyDominance * 100),
+                    String.format("  - Third Species: %.1f%%", thirdSpeciesDominance * 100),
                     "",
                     "Resources:",
                     "  - Water Sources: " + stats.getWaterCount(),
@@ -410,6 +453,11 @@ public class PDFReportGenerator {
             int totalCells = result.getGridSize() * result.getGridSize();
             double occupancyPercent = (double) stats.getTotalCreatures() / totalCells * 100;
             
+            // Calculate dominance indices
+            double predatorDominance = stats.getDominanceIndex(com.ecosimulator.model.CellType.PREDATOR);
+            double preyDominance = stats.getDominanceIndex(com.ecosimulator.model.CellType.PREY);
+            double thirdSpeciesDominance = stats.getDominanceIndex(com.ecosimulator.model.CellType.THIRD_SPECIES);
+            
             String[] lines = {
                 "Total Turns: " + stats.getTurn(),
                 "Grid Size: " + result.getGridSize() + " x " + result.getGridSize(),
@@ -423,6 +471,11 @@ public class PDFReportGenerator {
                     " (Male: " + stats.getThirdSpeciesMaleCount() + ", Female: " + stats.getThirdSpeciesFemaleCount() + ")",
                 "  - Mutated: " + stats.getMutatedCount(),
                 "  - Total: " + stats.getTotalCreatures(),
+                "",
+                "Dominance Index:",
+                String.format("  - Predators: %.1f%%", predatorDominance * 100),
+                String.format("  - Prey: %.1f%%", preyDominance * 100),
+                String.format("  - Third Species: %.1f%%", thirdSpeciesDominance * 100),
                 "",
                 "Resources:",
                 "  - Water Sources: " + stats.getWaterCount(),
@@ -471,9 +524,36 @@ public class PDFReportGenerator {
                 
                 try (PDPageContentStream newContentStream = new PDPageContentStream(document, newPage)) {
                     newContentStream.drawImage(populationImage, imageX, yPosition - imageHeight, imageWidth, imageHeight);
+                    yPosition -= (imageHeight + 20);
+                    
+                    // Add Dominance Index Chart
+                    boolean includeThirdSpecies = stats.getThirdSpeciesCount() > 0;
+                    BufferedImage dominanceChart = ChartGenerator.createDominancePieChart(
+                        predatorDominance, preyDominance, thirdSpeciesDominance, includeThirdSpecies);
+                    PDImageXObject dominanceImage = LosslessFactory.createFromImage(document, dominanceChart);
+                    newContentStream.drawImage(dominanceImage, imageX, yPosition - imageHeight, imageWidth, imageHeight);
                 }
             } else {
                 contentStream.drawImage(populationImage, imageX, yPosition - imageHeight, imageWidth, imageHeight);
+                yPosition -= (imageHeight + 20);
+                
+                // Add Dominance Index Chart
+                boolean includeThirdSpecies = stats.getThirdSpeciesCount() > 0;
+                BufferedImage dominanceChart = ChartGenerator.createDominancePieChart(
+                    predatorDominance, preyDominance, thirdSpeciesDominance, includeThirdSpecies);
+                PDImageXObject dominanceImage = LosslessFactory.createFromImage(document, dominanceChart);
+                
+                if (yPosition < imageHeight + MARGIN) {
+                    PDPage newPage = new PDPage(PDRectangle.A4);
+                    document.addPage(newPage);
+                    yPosition = newPage.getMediaBox().getHeight() - MARGIN;
+                    
+                    try (PDPageContentStream newContentStream = new PDPageContentStream(document, newPage)) {
+                        newContentStream.drawImage(dominanceImage, imageX, yPosition - imageHeight, imageWidth, imageHeight);
+                    }
+                } else {
+                    contentStream.drawImage(dominanceImage, imageX, yPosition - imageHeight, imageWidth, imageHeight);
+                }
             }
         }
     }

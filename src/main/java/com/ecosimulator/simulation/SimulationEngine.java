@@ -301,6 +301,7 @@ public class SimulationEngine {
     /**
      * Process creature movement, hunting/eating, and scavenging using Dijkstra pathfinding
      * ALWAYS seek food and water - this is unconditional until death
+     * Priority order: Critical needs (thirst/hunger) > Reproduction > Normal behavior > Anti-stuck movement
      */
     private void processCreatureAction(Creature creature, List<Creature> newCreatures, 
                                         List<Creature> deadCreatures, List<Corpse> consumedCorpses) {
@@ -311,6 +312,9 @@ public class SimulationEngine {
         int movementRange = getMovementRange(creature);
         List<int[]> neighbors = getNeighborsWithinRange(row, col, movementRange);
         Collections.shuffle(neighbors, random);
+        
+        // Track if creature is stuck (same position for 2+ turns)
+        boolean isStuck = creature.isStuck(2);
 
         // Priority 1: Check if creature is critically thirsty (>70) - seek water immediately
         if (creature.getThirst() > 70) {
@@ -333,56 +337,87 @@ public class SimulationEngine {
                     return;
                 }
             }
+            // Scavengers seek corpses when hungry
+            else if (creature.getType() == CellType.THIRD_SPECIES) {
+                if (processScavengerActionWithPathfinding(creature, consumedCorpses, row, col, neighbors)) {
+                    return;
+                }
+            }
         }
 
-        // Priority 3: Scavengers ALWAYS seek corpses or water (unconditional)
-        if (creature.getType() == CellType.THIRD_SPECIES) {
-            // Try corpses first
-            if (processScavengerActionWithPathfinding(creature, consumedCorpses, row, col, neighbors)) {
-                return;
-            }
-            // Then always try water (unconditional for scavengers)
+        // Priority 3: Seek water when moderately thirsty (>30) - before other activities
+        if (creature.getThirst() > 30) {
             if (seekAndConsumeResourceWithPathfinding(creature, CellType.WATER, row, col, neighbors)) {
                 return;
             }
         }
 
-        // Priority 4: Prey flee from nearby predators using Dijkstra
+        // Priority 4: Seek food when moderately hungry (>30)
+        if (creature.getHunger() > 30) {
+            if (seekFoodBasedOnType(creature, deadCreatures, consumedCorpses, row, col, neighbors)) {
+                return;
+            }
+        }
+        
+        // Priority 5: Reproduction - seek mates when basic needs are satisfied
+        // This is now prioritized AFTER food/water needs but BEFORE other behaviors
+        if (creature.canReproduce() && creature.isMature() && creature.canMate()) {
+            if (seekMateWithPathfinding(creature, row, col, neighbors)) {
+                return;
+            }
+        }
+
+        // Priority 6: Prey flee from nearby predators using Dijkstra
         if (creature.getType() == CellType.PREY) {
             if (fleeFromPredators(creature, row, col, neighbors)) {
                 return;
             }
         }
 
-        // Priority 5: Predators ALWAYS hunt prey (unconditional)
+        // Priority 7: Predators hunt prey when not critically hungry
         if (creature.getType() == CellType.PREDATOR) {
             if (huntPreyWithPathfinding(creature, deadCreatures, row, col, neighbors)) {
                 return;
             }
         }
 
-        // Priority 6: Seek water when thirsty (unconditional but with threshold to reduce pathfinding overhead)
+        // Priority 8: Scavengers seek corpses or water
+        if (creature.getType() == CellType.THIRD_SPECIES) {
+            // Try corpses first
+            if (processScavengerActionWithPathfinding(creature, consumedCorpses, row, col, neighbors)) {
+                return;
+            }
+            // Then try water
+            if (creature.getThirst() > 10) {
+                if (seekAndConsumeResourceWithPathfinding(creature, CellType.WATER, row, col, neighbors)) {
+                    return;
+                }
+            }
+        }
+
+        // Priority 9: Seek water when slightly thirsty
         if (creature.getThirst() > 10) {
             if (seekAndConsumeResourceWithPathfinding(creature, CellType.WATER, row, col, neighbors)) {
                 return;
             }
         }
         
-        // Priority 7: Prey seek food (unconditional but with threshold to reduce pathfinding overhead)
+        // Priority 10: Prey seek food when slightly hungry
         if (creature.getType() == CellType.PREY && creature.getHunger() > 10) {
             if (seekAndConsumeResourceWithPathfinding(creature, CellType.FOOD, row, col, neighbors)) {
                 return;
             }
         }
-        
-        // Priority 8: Scavengers seek corpses (unconditional but with threshold to reduce pathfinding overhead)
-        if (creature.getType() == CellType.THIRD_SPECIES && creature.getHunger() > 10) {
-            if (processScavengerActionWithPathfinding(creature, consumedCorpses, row, col, neighbors)) {
+
+        // Priority 11: Anti-stuck behavior - force movement if stuck for 2+ turns
+        // This ensures no species stays in the same cell for too long
+        if (isStuck) {
+            if (forceMovement(creature, row, col, neighbors)) {
                 return;
             }
         }
 
-        // Priority 9: Move to empty cell (random movement as fallback to prevent staying in same cell)
+        // Priority 12: Move to empty cell (random movement as fallback to prevent staying in same cell)
         for (int[] neighbor : neighbors) {
             CellType cellType = grid[neighbor[0]][neighbor[1]];
             if (cellType == CellType.EMPTY && isCellAvailable(neighbor[0], neighbor[1])) {
@@ -391,7 +426,7 @@ public class SimulationEngine {
             }
         }
         
-        // Priority 10: If no empty cells in movement range, try moving to cells with resources
+        // Priority 13: If no empty cells in movement range, try moving to cells with resources
         // This prevents creatures from getting stuck in corners or crowded areas
         for (int[] neighbor : neighbors) {
             CellType cellType = grid[neighbor[0]][neighbor[1]];
@@ -401,6 +436,150 @@ public class SimulationEngine {
                 return;
             }
         }
+        
+        // If creature couldn't move, update position tracking
+        creature.updatePositionTracking();
+    }
+    
+    /**
+     * Seek food based on creature type
+     */
+    private boolean seekFoodBasedOnType(Creature creature, List<Creature> deadCreatures,
+                                        List<Corpse> consumedCorpses, int row, int col, List<int[]> neighbors) {
+        return switch (creature.getType()) {
+            case PREDATOR -> huntPreyWithPathfinding(creature, deadCreatures, row, col, neighbors);
+            case PREY -> seekAndConsumeResourceWithPathfinding(creature, CellType.FOOD, row, col, neighbors);
+            case THIRD_SPECIES -> processScavengerActionWithPathfinding(creature, consumedCorpses, row, col, neighbors);
+            default -> false;
+        };
+    }
+    
+    /**
+     * Seek a mate using pathfinding when reproduction conditions are met
+     * Creatures will actively move towards potential mates of opposite sex
+     */
+    private boolean seekMateWithPathfinding(Creature creature, int row, int col, List<int[]> neighbors) {
+        // First check immediate neighbors for potential mates
+        for (int[] neighbor : neighbors) {
+            Creature potentialMate = findCreatureAt(neighbor[0], neighbor[1]);
+            if (potentialMate != null) {
+                String rejectionReason = reproductionManager.canMate(creature, potentialMate);
+                if (rejectionReason == null) {
+                    // Found a mate nearby, move closer if not adjacent
+                    return false; // Stay here, reproduction will happen in the main loop
+                }
+            }
+        }
+        
+        // Use pathfinding to find and move towards a potential mate
+        // Search for creatures of the same type but opposite sex
+        int searchRange = 8;
+        int[] nextMove = findNextMoveTowardsMate(creature, row, col, searchRange);
+        
+        if (nextMove != null && isCellAvailable(nextMove[0], nextMove[1])) {
+            moveCreature(creature, nextMove[0], nextMove[1], row, col);
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Find next move towards a potential mate of opposite sex
+     */
+    private int[] findNextMoveTowardsMate(Creature seeker, int startRow, int startCol, int searchRange) {
+        int gridSize = config.getGridSize();
+        Creature nearestMate = null;
+        double nearestDistance = Double.MAX_VALUE;
+        
+        // Find all potential mates within search range
+        for (int r = Math.max(0, startRow - searchRange); r <= Math.min(gridSize - 1, startRow + searchRange); r++) {
+            for (int c = Math.max(0, startCol - searchRange); c <= Math.min(gridSize - 1, startCol + searchRange); c++) {
+                if (r == startRow && c == startCol) continue;
+                
+                Creature candidate = findCreatureAt(r, c);
+                if (candidate != null && candidate.getType() == seeker.getType() 
+                    && candidate.getSex() != seeker.getSex()
+                    && candidate.isMature() && candidate.canMate() && candidate.canReproduce()) {
+                    
+                    double distance = Math.abs(r - startRow) + Math.abs(c - startCol);
+                    if (distance < nearestDistance) {
+                        nearestDistance = distance;
+                        nearestMate = candidate;
+                    }
+                }
+            }
+        }
+        
+        if (nearestMate == null) {
+            return null;
+        }
+        
+        // Calculate direction towards mate
+        int rowDir = Integer.compare(nearestMate.getRow(), startRow);
+        int colDir = Integer.compare(nearestMate.getCol(), startCol);
+        
+        // Try to move in the direction of the mate
+        int newRow = startRow + rowDir;
+        int newCol = startCol + colDir;
+        
+        if (newRow >= 0 && newRow < gridSize && newCol >= 0 && newCol < gridSize) {
+            CellType targetCell = grid[newRow][newCol];
+            if (isMovableCell(targetCell)) {
+                return new int[]{newRow, newCol};
+            }
+        }
+        
+        // Try alternative moves if direct path is blocked
+        int[][] alternatives = {
+            {startRow + rowDir, startCol},
+            {startRow, startCol + colDir},
+            {startRow + rowDir, startCol - colDir},
+            {startRow - rowDir, startCol + colDir}
+        };
+        
+        for (int[] alt : alternatives) {
+            if (alt[0] >= 0 && alt[0] < gridSize && alt[1] >= 0 && alt[1] < gridSize) {
+                CellType targetCell = grid[alt[0]][alt[1]];
+                if (isMovableCell(targetCell)) {
+                    return alt;
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Force movement when creature is stuck for too long
+     * Prioritizes moving to any available cell to break the stuck state
+     */
+    private boolean forceMovement(Creature creature, int row, int col, List<int[]> neighbors) {
+        // Shuffle neighbors to ensure random direction when stuck
+        List<int[]> shuffledNeighbors = new ArrayList<>(neighbors);
+        Collections.shuffle(shuffledNeighbors, random);
+        
+        // Try any available cell
+        for (int[] neighbor : shuffledNeighbors) {
+            if (isCellAvailable(neighbor[0], neighbor[1])) {
+                moveCreature(creature, neighbor[0], neighbor[1], row, col);
+                eventLogger.logMovement(stats.getTurn(), creature, row, col, neighbor[0], neighbor[1]);
+                return true;
+            }
+        }
+        
+        // If completely surrounded, try cells with resources (water/food)
+        for (int[] neighbor : shuffledNeighbors) {
+            CellType cellType = grid[neighbor[0]][neighbor[1]];
+            if ((cellType == CellType.WATER || cellType == CellType.FOOD) 
+                && creaturePositionMap.get(positionKey(neighbor[0], neighbor[1])) == null) {
+                moveCreature(creature, neighbor[0], neighbor[1], row, col);
+                consumeResourceIfCompatible(creature, cellType);
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     /**
@@ -722,12 +901,51 @@ public class SimulationEngine {
 
     /**
      * Apply random mutations to creatures
+     * Optimized to batch processing and reduce overhead for large populations
+     * Uses pre-filtering to avoid iterating over already-mutated creatures
      */
     private void applyRandomMutations() {
+        // Pre-filter to get only non-mutated creatures - reduces iterations
+        List<Creature> nonMutatedCreatures = new ArrayList<>();
         for (Creature creature : creatures) {
-            if (!creature.isMutated() && random.nextDouble() < 0.02) { // 2% chance per turn
-                creature.mutate();
-                eventLogger.logMutationActivated(stats.getTurn(), creature);
+            if (!creature.isMutated()) {
+                nonMutatedCreatures.add(creature);
+            }
+        }
+        
+        // If no creatures can mutate, skip processing entirely
+        if (nonMutatedCreatures.isEmpty()) {
+            return;
+        }
+        
+        // Calculate expected mutations based on population size
+        // Use statistical approach: expected mutations = population * mutation_rate
+        double mutationRate = 0.02; // 2% chance per turn
+        int expectedMutations = (int) Math.ceil(nonMutatedCreatures.size() * mutationRate);
+        
+        // For small populations, use individual random checks (more precise)
+        // For large populations, use batch selection (more efficient)
+        if (nonMutatedCreatures.size() <= 50) {
+            // Original behavior for small populations
+            for (Creature creature : nonMutatedCreatures) {
+                if (random.nextDouble() < mutationRate) {
+                    creature.mutate();
+                    eventLogger.logMutationActivated(stats.getTurn(), creature);
+                }
+            }
+        } else {
+            // Batch selection for large populations
+            // Randomly select approximately expectedMutations creatures to mutate
+            Collections.shuffle(nonMutatedCreatures, random);
+            int toMutate = Math.min(expectedMutations, nonMutatedCreatures.size());
+            
+            for (int i = 0; i < toMutate; i++) {
+                // Additional random check to maintain probabilistic behavior
+                if (random.nextDouble() < 0.5) {
+                    Creature creature = nonMutatedCreatures.get(i);
+                    creature.mutate();
+                    eventLogger.logMutationActivated(stats.getTurn(), creature);
+                }
             }
         }
     }
